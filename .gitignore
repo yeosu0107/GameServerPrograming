@@ -1,6 +1,4 @@
 .vs/
-Debug/
-x64/
 *.obj
 *.log
 *.pch
@@ -16,3 +14,10 @@ __history
 *.exe
 *.elf
 *.FBX
+*.tlog
+*.iobj
+*.ipdb
+*.ipb
+*.pdb
+*.ilk
+
