@@ -76,6 +76,11 @@ void Objects::Move(float3 moveValue)
 	m_Pos += moveValue;
 }
 
+void Objects::Move(float x, float y)
+{
+	m_Pos = float3(x, y, 0);
+}
+
 void Objects::Animate()
 {
 

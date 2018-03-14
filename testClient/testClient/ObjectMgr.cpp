@@ -35,7 +35,7 @@ void ObjectMgr::BuildObjects()
 		lineObject = new Objects(float3(tx, 0.0f, 0.0f), float4(1, 1, 1, 1), 10.0f, WindowHeight, 0, "Line", float3(0, 0, 0), 0.0f);
 		m_Objects.emplace_back(lineObject);
 	}
-	m_Player = new Objects(float3(-217.5f, 217.5f, 0), float4(1, 0, 0, 1), playerSize, playerSize,
+	m_Player = new Objects(float3(playerStartX, playerStartY, 0), float4(1, 0, 0, 1), playerSize, playerSize,
 		1.0f, "Player", float3(0, 0, 0), 0.0f);
 	m_Objects.emplace_back(m_Player);
 }
@@ -87,4 +87,11 @@ void ObjectMgr::MovePlayer(int dir)
 	default:
 		break;
 	}
+}
+
+void ObjectMgr::MovePlayer(int xPos, int yPos)
+{
+	int applyX = playerStartX + (xPos * MoveValue);
+	int applyY = playerStartY +  (yPos * -MoveValue);
+	m_Player->Move(applyX, applyY);
 }

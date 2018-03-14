@@ -153,7 +153,7 @@ GLuint Renderer::CompileShaders(char* filenameVS, char* filenameFS)
 	}
 
 	glUseProgram(ShaderProgram);
-	std::cout << filenameVS << ", " << filenameFS << " Shader compiling is done.";
+	std::cout << filenameVS << ", " << filenameFS << " Shader compiling is done."<<endl;
 
 	return ShaderProgram;
 }

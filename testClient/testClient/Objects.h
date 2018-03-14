@@ -93,6 +93,7 @@ public:
 	//오브젝트 제어
 	void Move();								//이동방향으로 이동속도만큼 이동
 	void Move(float3 moveValue);		//속도벡터만큼 이동
+	void Move(float x, float y);			//해당 좌표로 이동
 	virtual void Animate();					//애니메이트
 	virtual void CrashCheck();				//충돌체크
 

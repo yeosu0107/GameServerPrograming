@@ -11,6 +11,9 @@ class Renderer;
 #define  GLUT_KEY_RIGHT          0x0066
 #define  GLUT_KEY_DOWN          0x0067
 
+const float playerStartX =	-217.5f;
+const float playerStartY =	217.5f;
+
 const float MoveValue = 62.0f;
 
 class ObjectMgr
@@ -28,5 +31,6 @@ public:
 	void UpdateObjects(); //오브젝트 갱신
 
 	void MovePlayer(int dir); //플레이어 이동
+	void MovePlayer(int xPos, int yPos); //플레이어 이동 for 서버
 };
 
