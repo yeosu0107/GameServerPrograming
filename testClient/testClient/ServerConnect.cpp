@@ -60,10 +60,10 @@ int ServerConnect::SendData()
 {
 	int retval;
 	retval = send(m_socket, (char*)&m_InputKeyData, sizeof(WORD), 0);
-	if (retval == SOCKET_ERROR) {
-		error_display("send()");
-		return retval;
-	}
+	//if (retval == SOCKET_ERROR) {
+	//	error_display("send()");
+	//	return retval;
+	//}
 
 	m_InputKeyData = 0;
 	return retval;
@@ -73,8 +73,8 @@ int ServerConnect::RecvData()
 {
 	int retval;
 	retval = recvn(m_socket, m_recvData, sizeof(WORD)*2, 0);
-	if (retval == SOCKET_ERROR)
-		error_display("recv()");
+	//if (retval == SOCKET_ERROR)
+	//	error_display("recv()");
 //#ifdef _DEBUG
 //	int xPos = m_recvData[0];
 //	int yPos = m_recvData[1];

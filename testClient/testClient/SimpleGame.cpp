@@ -16,6 +16,14 @@ Renderer *g_Renderer = nullptr;
 ObjectMgr* g_Mgr = nullptr;
 ServerConnect* g_server = nullptr;
 char* checkData = nullptr;
+int retval = -1;
+
+void shutDown()
+{
+	cout << "서버와의 연결이 끊겼습니다" << endl;
+	cout << "프로그램을 종료합니다" << endl;
+	glutLeaveMainLoop();
+}
 
 void RenderScene(void)
 {
@@ -31,9 +39,14 @@ void RenderScene(void)
 void Idle(void)
 {
 	g_Mgr->UpdateObjects();
-	g_server->RecvData();
+	retval = g_server->RecvData();
+		
 	RenderScene();
-	g_server->SendData();
+	retval = g_server->SendData();
+	if (retval == SOCKET_ERROR) {
+		shutDown();
+	}
+		
 	if (checkData[0] != -1) {
 		g_Mgr->MovePlayer(checkData[0], checkData[1]);
 	}
@@ -42,11 +55,11 @@ void Idle(void)
 void MouseInput(int button, int state, int x, int y)
 {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-		//마우스 좌표 보정
-		int xPos = x - WindowWidth / 2;
-		int yPos = WindowHeight / 2 - y;
+		////마우스 좌표 보정
+		//int xPos = x - WindowWidth / 2;
+		//int yPos = WindowHeight / 2 - y;
 
-		//cout << xPos << "\t" << yPos << endl;
+		////cout << xPos << "\t" << yPos << endl;
 	}
 }
 
@@ -80,6 +93,9 @@ void SpecialKeyInput(int key, int x, int y)
 
 int main(int argc, char **argv)
 {
+	//서버와 연결
+	g_server = new ServerConnect();
+
 	// Initialize GL things
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
@@ -97,6 +113,7 @@ int main(int argc, char **argv)
 		std::cout << "GLEW 3.0 not supported\n ";
 	}
 
+
 	//랜더러 초기화
 	g_Renderer = new Renderer(WindowWidth, WindowHeight);
 	if (!g_Renderer->IsInitialized())
@@ -105,10 +122,7 @@ int main(int argc, char **argv)
 	g_Mgr = new ObjectMgr();
 	if (!g_Mgr)
 		cout << "ObjectMgr 생성 실패" << endl;
-	//서버와 연결
-	g_server = new ServerConnect();
-	if (!g_server)
-		cout << "서버와 연결 실패" << endl;
+	
 	checkData = g_server->getRecvData();
 	glutDisplayFunc(RenderScene);
 	glutIdleFunc(Idle);
@@ -118,6 +132,7 @@ int main(int argc, char **argv)
 
 	glutMainLoop();
 
+	delete g_server;
 	delete g_Renderer;
 	delete g_Mgr;
     return 0;

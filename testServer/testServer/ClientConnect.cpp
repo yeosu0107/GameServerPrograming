@@ -10,7 +10,7 @@ ClientConnect::ClientConnect(SOCKET* tmpSocket) :
 
 	xPos = 0;
 	yPos = 0;
-	cout << xPos << "\t" << yPos << endl;
+	//cout << xPos << "\t" << yPos << endl;
 }
 
 
@@ -23,8 +23,8 @@ int ClientConnect::recvData()
 {
 	int retval;
 	retval = recvn(*m_socket, m_recvBuf, sizeof(WORD), 0);
-	if (retval == SOCKET_ERROR)
-		err_display("recv()");
+	//if (retval == SOCKET_ERROR)
+	//	err_display("recv()");
 	return retval;
 }
 
@@ -42,7 +42,7 @@ int ClientConnect::sendData()
 	}
 	
 	retval = send(*m_socket, m_sendBuf, sizeof(SendDataFormat), 0);
-	return 0;
+	return retval;
 }
 
 void ClientConnect::MoveObject()
