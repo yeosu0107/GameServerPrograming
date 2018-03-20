@@ -1,7 +1,3 @@
-/*
-Game Software Engineering
-*/
-
 #include "stdafx.h"
 
 
@@ -47,9 +43,7 @@ void Idle(void)
 		shutDown();
 	}
 		
-	if (checkData[0] != -1) {
-		g_Mgr->MovePlayer(checkData[0], checkData[1]);
-	}
+	g_Mgr->MovePlayers(checkData);
 }
 
 void MouseInput(int button, int state, int x, int y)
@@ -83,12 +77,9 @@ void SpecialKeyInput(int key, int x, int y)
 	case GLUT_KEY_LEFT:
 		g_server->getKeyData() |= DIR_LEFT;
 		break;
-		g_Mgr->MovePlayer(key);
 	default:
 		break;
 	}
-	
-	//cout << g_server->getKeyData() << endl;
 }
 
 int main(int argc, char **argv)

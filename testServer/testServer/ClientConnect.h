@@ -9,18 +9,22 @@ const int MAX_Y = 7;
 enum PacketType {
 	sendType = 0, recvType = 1
 };
-
+#pragma pack(1)
 struct PlayerInfo {
-	UINT	m_playerNum;
-	int xPos, yPos;
+	int	m_playerNum;
+	int xPos;
+	int yPos;
 
-	PlayerInfo(UINT num, int x, int y) {
+	PlayerInfo(int num, int x, int y) {
 		m_playerNum = num;
 		xPos = x;
 		yPos = y;
 	}
+	void print() {
+		printf("%d	%d	%d\n", m_playerNum, xPos, yPos);
+	}
 };
-
+#pragma pack()
 class ClientConnect
 {
 private:

@@ -20,7 +20,8 @@ class ObjectMgr
 {
 private:
 	vector<Objects*> m_Objects;
-	Objects* m_Player; //움직일 말
+	vector<Objects*> m_Player;
+	//Objects* m_Player; //움직일 말
 public:
 	ObjectMgr();
 	~ObjectMgr();
@@ -30,7 +31,7 @@ public:
 	void RenderObjects(Renderer& renderer); //랜더
 	void UpdateObjects(); //오브젝트 갱신
 
-	void MovePlayer(int dir); //플레이어 이동
 	void MovePlayer(int xPos, int yPos); //플레이어 이동 for 서버
+	void MovePlayers(char* dataes);
 };
 

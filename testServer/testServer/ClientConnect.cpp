@@ -35,18 +35,11 @@ int ClientConnect::sendData()
 	int retval;
 	memset(m_sendBuf, 0, sizeof(char)*MAX_BUF); //버퍼 초기화
 	char clientnum[1] = { g_nClient };
-	if (move) {
-		PlayerInfo* tt = new PlayerInfo(m_playerNum, xPos, yPos);
-		memcpy(m_sendBuf, tt, sizeof(tt));
-		m_sendLen[0] = sizeof(PlayerInfo);
-		
-		m_sendBuf[0] = xPos;
-		m_sendBuf[1] = yPos;
-	}
-	else {
-		m_sendBuf[0] = -1;
-		m_sendLen[0] = 1;
-	}
+
+	PlayerInfo* tt = new PlayerInfo(m_playerNum, xPos, yPos);
+	tt->print();
+	memcpy(m_sendBuf, tt, sizeof(PlayerInfo));
+	m_sendLen[0] = sizeof(PlayerInfo);
 
 	retval = send(m_socket, clientnum, 1, 0);		//클라이언트 갯수
 	retval = send(m_socket, m_sendLen, 1, 0);	//받는 데이터 크기

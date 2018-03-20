@@ -23,3 +23,35 @@ using namespace std;
 int recvn(SOCKET s, char *buf, int len, int flags);
 void error_quit(char* msg);
 void error_display(char *msg);
+
+static int				clientNum = 1;
+
+#pragma pack(1)
+struct PlayerInfo {
+	int	m_playerNum;
+	int xPos;
+	int yPos;
+
+	PlayerInfo() {
+		m_playerNum = 0;
+		xPos = 0;
+		yPos = 0;
+	}
+
+	PlayerInfo(int num, int x, int y) {
+		m_playerNum = num;
+		xPos = x;
+		yPos = y;
+	}
+
+	void set(int num, int x, int y) {
+		m_playerNum = num;
+		xPos = x;
+		yPos = y;
+	}
+	void print() {
+		printf("%d	%d	%d\n", m_playerNum, xPos, yPos);
+	}
+};
+#pragma pack()
+static PlayerInfo playerInfo[10];

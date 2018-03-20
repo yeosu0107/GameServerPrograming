@@ -1,8 +1,20 @@
 #include "stdafx.h"
 #include "ObjectMgr.h"
 
+float4 color[10] = {
+	float4(1,0,0,1),
+	float4(1,1,0,1),
+	float4(1,1,1,1),
+	float4(0,1,0,1),
+	float4(0,0,1,1),
+	float4(0,1,1,1),
+	float4(0,0,0,1),
+	float4(0.5f, 0.5f, 0,1),
+	float4(0,0.5f, 0.5f, 1),
+	float4(0.5f,0 , 0.5f, 1)
+};
 
-ObjectMgr::ObjectMgr() : m_Player(nullptr)
+ObjectMgr::ObjectMgr()
 {
 	BuildObjects();
 }
@@ -35,9 +47,15 @@ void ObjectMgr::BuildObjects()
 		lineObject = new Objects(float3(tx, 0.0f, 0.0f), float4(1, 1, 1, 1), 10.0f, WindowHeight, 0, "Line", float3(0, 0, 0), 0.0f);
 		m_Objects.emplace_back(lineObject);
 	}
-	m_Player = new Objects(float3(playerStartX, playerStartY, 0), float4(1, 0, 0, 1), playerSize, playerSize,
-		1.0f, "Player", float3(0, 0, 0), 0.0f);
-	m_Objects.emplace_back(m_Player);
+
+	for (int i = 0; i < 10; ++i) {
+		Objects* player= new Objects(float3(playerStartX, playerStartY, 0), color[i], playerSize, playerSize,
+			1.0f, "Player", float3(0, 0, 0), 0.0f);
+		player->setLive(false);
+
+		m_Player.emplace_back(player);
+	}
+	//m_Objects.emplace_back(m_Player);
 }
 
 void ObjectMgr::RenderObjects(Renderer & renderer)
@@ -45,6 +63,11 @@ void ObjectMgr::RenderObjects(Renderer & renderer)
 	for (Objects* object : m_Objects) {
 		object->Update();
 		object->Render(renderer);
+	}
+
+	for (Objects* player : m_Player) {
+		player->Update();
+		player->Render(renderer);
 	}
 }
 
@@ -55,43 +78,23 @@ void ObjectMgr::UpdateObjects()
 	}
 }
 
-void ObjectMgr::MovePlayer(int dir)
-{
-	float3 check = m_Player->getPos();
-	float3 moveDir(0,0,0);
-	switch (dir) {
-	case GLUT_KEY_RIGHT:
-		moveDir.x = MoveValue;
-		check += moveDir;
-		if(WindowWidth/2 > check.x)
-			m_Player->Move(moveDir);
-		break;
-	case GLUT_KEY_UP:
-		moveDir.y = MoveValue;
-		check += moveDir;
-		if (WindowHeight /2 > check.y)
-			m_Player->Move(moveDir);
-		break;
-	case GLUT_KEY_DOWN:
-		moveDir.y = -MoveValue;
-		check += moveDir;
-		if (-WindowHeight / 2 < check.y)
-			m_Player->Move(moveDir);
-		break;
-	case GLUT_KEY_LEFT:
-		moveDir.x = -MoveValue;
-		check += moveDir;
-		if (-WindowWidth/2 < check.x)
-			m_Player->Move(moveDir);
-		break;
-	default:
-		break;
-	}
-}
 
 void ObjectMgr::MovePlayer(int xPos, int yPos)
 {
 	int applyX = playerStartX + (xPos * MoveValue);
 	int applyY = playerStartY +  (yPos * -MoveValue);
-	m_Player->Move(applyX, applyY);
+	m_Player[0]->Move(applyX, applyY);
+}
+
+void ObjectMgr::MovePlayers(char * dataes)
+{
+	for (int i = 0; i < clientNum; ++i) {
+		memcpy(playerInfo + sizeof(PlayerInfo)*i, dataes + sizeof(PlayerInfo)*i, sizeof(PlayerInfo));
+
+		playerInfo[i].print();
+		int applyX = playerStartX + (playerInfo[i].xPos * MoveValue);
+		int applyY = playerStartY + (playerInfo[i].yPos * -MoveValue);
+		m_Player[playerInfo[i].m_playerNum]->Move(applyX, applyY);
+	}
+	
 }

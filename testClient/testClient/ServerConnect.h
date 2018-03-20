@@ -1,9 +1,5 @@
 #pragma once
 
-struct PlayerInfo {
-	UINT	m_playerNum;
-	int xPos, yPos;
-};
 
 class ServerConnect
 {
@@ -13,6 +9,7 @@ private:
 	WORD		m_InputKeyData;
 	char			m_recvData[MAX_BUF];
 	char			m_recvLen[1];
+	
 	//RecvDataFormat		m_recvData;
 public:
 	ServerConnect();
