@@ -1,6 +1,9 @@
 #pragma once
 
-
+struct PlayerInfo {
+	UINT	m_playerNum;
+	int xPos, yPos;
+};
 
 class ServerConnect
 {

@@ -11,7 +11,7 @@
 
 const int WindowWidth = 500;
 const int WindowHeight = 500;
-#define MAX_BUF 2
+#define MAX_BUF 512
 
 const DWORD DIR_LEFT		= 0x01;
 const DWORD DIR_RIGHT	= 0x02;

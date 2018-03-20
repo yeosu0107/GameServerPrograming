@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ServerConnect.h"
 
-//#define TEST
+#define TEST
 
 ServerConnect::ServerConnect() : m_InputKeyData(0)
 {
@@ -72,7 +72,7 @@ int ServerConnect::SendData()
 int ServerConnect::RecvData()
 {
 	int retval;
-	retval = recvn(m_socket, m_recvData, sizeof(WORD)*2, 0);
+	retval = recvn(m_socket, m_recvData, 2, 0);
 	//if (retval == SOCKET_ERROR)
 	//	error_display("recv()");
 //#ifdef _DEBUG
