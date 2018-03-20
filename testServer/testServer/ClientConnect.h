@@ -4,6 +4,8 @@ const int MAX_CLIENT = 10;
 const int MAX_X = 7;
 const int MAX_Y = 7;
 
+#define MAX_BUF 512
+
 enum PacketType {
 	sendType = 0, recvType = 1
 };
@@ -22,9 +24,10 @@ struct PlayerInfo {
 class ClientConnect
 {
 private:
-	SOCKET	*					m_socket;
+	SOCKET						m_socket;
 	char							m_recvBuf[MAX_BUF];
 	char							m_sendBuf[MAX_BUF];
+	char							m_sendLen[1];
 
 	bool							move;
 	UINT							m_playerNum;
@@ -32,7 +35,7 @@ private:
 
 	PacketType				m_packet;
 public:
-	ClientConnect(SOCKET* tmpSocket);
+	ClientConnect(SOCKET tmpSocket);
 	~ClientConnect();
 
 	int recvData();
@@ -42,13 +45,13 @@ public:
 	void setPlayer(UINT tmp);
 	void MoveObject();
 
-	SOCKET* getSocket() { return m_socket; }
+	SOCKET getSocket() { return m_socket; }
 	PacketType getType() { return m_packet; }
 	
 };
 
-extern ClientConnect* g_ClientArray[MAX_CLIENT];
-extern UINT g_nClient;
+//extern ClientConnect* g_ClientArray[MAX_CLIENT];
+//extern UINT g_nClient;
 
-bool AddSocket(SOCKET* socket);
+bool AddSocket(SOCKET socket);
 void RemoveSocket(int index);

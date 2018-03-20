@@ -12,6 +12,7 @@ private:
 	SOCKET		m_socket;
 	WORD		m_InputKeyData;
 	char			m_recvData[MAX_BUF];
+	char			m_recvLen[1];
 	//RecvDataFormat		m_recvData;
 public:
 	ServerConnect();

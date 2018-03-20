@@ -72,7 +72,11 @@ int ServerConnect::SendData()
 int ServerConnect::RecvData()
 {
 	int retval;
-	retval = recvn(m_socket, m_recvData, 2, 0);
+	retval = recvn(m_socket, m_recvLen, 1, 0);
+	cout <<"클라이언트 수 : " <<(int)m_recvLen[0] << endl;
+	retval = recvn(m_socket, m_recvLen, 1, 0);
+	cout << "데이터 크기 : " << (int)m_recvLen[0] << endl;
+	retval = recvn(m_socket, m_recvData, (int)m_recvLen[0], 0);
 	//if (retval == SOCKET_ERROR)
 	//	error_display("recv()");
 //#ifdef _DEBUG
