@@ -72,10 +72,10 @@ int ServerConnect::SendData()
 int ServerConnect::RecvData()
 {
 	int retval;
-	retval = recvn(m_socket, m_recvLen, 1, 0);
+	//retval = recvn(m_socket, m_recvLen, 1, 0);
+	retval = recvn(m_socket, m_recvLen, 2, 0);
 	clientNum = (int)m_recvLen[0];
-	retval = recvn(m_socket, m_recvLen, 1, 0);
-	retval = recvn(m_socket, m_recvData, (int)m_recvLen[0], 0);
+	retval = recvn(m_socket, m_recvData, (int)m_recvLen[1], 0);
 	//if (retval == SOCKET_ERROR)
 	//	error_display("recv()");
 	return retval;

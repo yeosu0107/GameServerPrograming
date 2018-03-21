@@ -22,6 +22,7 @@ private:
 	vector<Objects*> m_Objects;
 	vector<Objects*> m_Player;
 	//Objects* m_Player; //움직일 말
+	bool isRender[10];
 public:
 	ObjectMgr();
 	~ObjectMgr();

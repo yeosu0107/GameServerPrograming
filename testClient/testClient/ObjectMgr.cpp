@@ -64,10 +64,13 @@ void ObjectMgr::RenderObjects(Renderer & renderer)
 		object->Update();
 		object->Render(renderer);
 	}
-
+	int i = 0;
 	for (Objects* player : m_Player) {
-		player->Update();
-		player->Render(renderer);
+		if (isRender[i]) {
+			player->Update();
+			player->Render(renderer);
+		}
+		i += 1;
 	}
 }
 
@@ -89,11 +92,13 @@ void ObjectMgr::MovePlayer(int xPos, int yPos)
 void ObjectMgr::MovePlayers(char * dataes)
 {
 	memcpy(playerInfo, dataes, sizeof(PlayerInfo)*clientNum);
+	memset(isRender, false, sizeof(bool) * 10);
 
 	for (int i = 0; i < clientNum; ++i) {
 		int applyX = playerStartX + (playerInfo[i].xPos * MoveValue);
 		int applyY = playerStartY + (playerInfo[i].yPos * -MoveValue);
 		m_Player[playerInfo[i].m_playerNum]->Move(applyX, applyY);
+		isRender[playerInfo[i].m_playerNum] = true;
 	}
 	
 }

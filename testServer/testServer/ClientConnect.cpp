@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ClientConnect.h"
 
+UINT g_nextID = 0;
 
 ClientConnect::ClientConnect(SOCKET tmpSocket) :
 	m_socket(tmpSocket),  m_playerNum(0)
@@ -30,16 +31,16 @@ int ClientConnect::recvData()
 	return retval;
 }
 
-int ClientConnect::sendData()
+int ClientConnect::sendData(int index)
 {
 	int retval;
 	memset(m_sendBuf, 0, sizeof(char)*MAX_BUF); //버퍼 초기화
-	char clientnum[1] = { g_nClient };
 
-	g_Player[m_playerNum].set(m_playerNum, xPos, yPos);
+	g_Player[index].set(m_playerNum, xPos, yPos);
 
 	memcpy(m_sendBuf, g_Player, sizeof(PlayerInfo)*g_nClient);
-	m_sendLen[0] = sizeof(PlayerInfo)*g_nClient;
+	m_sendLen[0] = g_nClient;
+	m_sendLen[1] = sizeof(PlayerInfo)*g_nClient;
 
 	//PlayerInfo* tt = new PlayerInfo();
 	//tt->set(0, xPos, yPos);
@@ -47,9 +48,9 @@ int ClientConnect::sendData()
 	//memcpy(m_sendBuf, tt, sizeof(PlayerInfo));
 	//m_sendLen[0] = sizeof(PlayerInfo);
 
-	retval = send(m_socket, clientnum, 1, 0);		//클라이언트 갯수
-	retval = send(m_socket, m_sendLen, 1, 0);	//받는 데이터 크기
-	retval = send(m_socket, m_sendBuf, (int)m_sendLen[0], 0); //데이터
+	//retval = send(m_socket, clientnum, 1, 0);		//클라이언트 갯수
+	retval = send(m_socket, m_sendLen, 2, 0);	// 클라이언트 갯수 & 받는 데이터 크기
+	retval = send(m_socket, m_sendBuf, (int)m_sendLen[1], 0); //데이터
 	return retval;
 }
 
@@ -85,12 +86,14 @@ void ClientConnect::setPlayer(UINT tmp)
 
 bool AddSocket(SOCKET socket)
 {
-	if (g_nClient >= 10) {
+	if (g_nClient >= MAX_CLIENT) {
 		cout << "클라이언트 Limited" << endl;
 		return false;
 	}
 	ClientConnect* client = new ClientConnect(socket);
-	client->setPlayer(g_nClient);
+	client->setPlayer(g_nextID++);
+	if (g_nextID >= MAX_CLIENT)
+		g_nextID = 0;
 	g_ClientArray[g_nClient] = client;
 	g_nClient += 1;
 
@@ -104,8 +107,10 @@ void RemoveSocket(int index)
 	closesocket(client->getSocket());
 	delete client;
 
-	for (int i = index; i < g_nClient; ++i)
+	for (int i = index; i < g_nClient; ++i) {
 		g_ClientArray[i] = g_ClientArray[i + 1];
+		g_Player[i] = g_Player[i + 1];
+	}
 	
 	if(g_ClientArray[g_nClient-1])
 		delete g_ClientArray[g_nClient - 1];
