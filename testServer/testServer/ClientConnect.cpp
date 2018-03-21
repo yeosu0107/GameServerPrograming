@@ -3,7 +3,7 @@
 
 
 ClientConnect::ClientConnect(SOCKET tmpSocket) :
-	m_socket(tmpSocket), move(false), m_playerNum(0)
+	m_socket(tmpSocket),  m_playerNum(0)
 {
 	memset(m_recvBuf, 0, sizeof(char)*MAX_BUF);
 	memset(m_sendBuf, 0, sizeof(char)*MAX_BUF);
@@ -36,10 +36,16 @@ int ClientConnect::sendData()
 	memset(m_sendBuf, 0, sizeof(char)*MAX_BUF); //버퍼 초기화
 	char clientnum[1] = { g_nClient };
 
-	PlayerInfo* tt = new PlayerInfo(m_playerNum, xPos, yPos);
-	tt->print();
-	memcpy(m_sendBuf, tt, sizeof(PlayerInfo));
-	m_sendLen[0] = sizeof(PlayerInfo);
+	g_Player[m_playerNum].set(m_playerNum, xPos, yPos);
+
+	memcpy(m_sendBuf, g_Player, sizeof(PlayerInfo)*g_nClient);
+	m_sendLen[0] = sizeof(PlayerInfo)*g_nClient;
+
+	//PlayerInfo* tt = new PlayerInfo();
+	//tt->set(0, xPos, yPos);
+	//tt->print();
+	//memcpy(m_sendBuf, tt, sizeof(PlayerInfo));
+	//m_sendLen[0] = sizeof(PlayerInfo);
 
 	retval = send(m_socket, clientnum, 1, 0);		//클라이언트 갯수
 	retval = send(m_socket, m_sendLen, 1, 0);	//받는 데이터 크기
@@ -49,36 +55,22 @@ int ClientConnect::sendData()
 
 void ClientConnect::MoveObject()
 {
-	move = false;
 	if (*m_recvBuf & DIR_DOWN) {
 		if (yPos < MAX_Y)
 			yPos += 1;
-		//cout << "down" << endl;
-		move = true;
 	}
 	if (*m_recvBuf & DIR_UP) {
 		if (yPos > 0)
 			yPos -= 1;
-		//cout << "up" << endl;
-		move = true;
 	}
 	if (*m_recvBuf & DIR_LEFT) {
 		if (xPos > 0)
 			xPos -= 1;
-		//cout << "left" << endl;
-		move = true;
 	}
 	if (*m_recvBuf & DIR_RIGHT) {
 		if (xPos < MAX_X)
 			xPos += 1;
-		//cout << "right" << endl;
-		move = true;
 	}
-//#ifdef _DEBUG
-//	if (move) {
-//		cout << xPos << "\t" << yPos << endl;
-//	}
-//#endif
 }
 
 void ClientConnect::setType(PacketType tmp)

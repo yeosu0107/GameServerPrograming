@@ -24,7 +24,7 @@ int recvn(SOCKET s, char *buf, int len, int flags);
 void error_quit(char* msg);
 void error_display(char *msg);
 
-static int				clientNum = 1;
+extern int				clientNum;
 
 #pragma pack(1)
 struct PlayerInfo {

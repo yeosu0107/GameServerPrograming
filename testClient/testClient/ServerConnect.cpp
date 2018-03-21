@@ -75,14 +75,8 @@ int ServerConnect::RecvData()
 	retval = recvn(m_socket, m_recvLen, 1, 0);
 	clientNum = (int)m_recvLen[0];
 	retval = recvn(m_socket, m_recvLen, 1, 0);
-	cout << "데이터 크기 : " << (int)m_recvLen[0] << endl;
 	retval = recvn(m_socket, m_recvData, (int)m_recvLen[0], 0);
 	//if (retval == SOCKET_ERROR)
 	//	error_display("recv()");
-//#ifdef _DEBUG
-//	int xPos = m_recvData[0];
-//	int yPos = m_recvData[1];
-//	cout << xPos<<"\t"<< yPos << endl;
-//#endif
 	return retval;
 }

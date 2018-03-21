@@ -15,13 +15,13 @@ struct PlayerInfo {
 	int xPos;
 	int yPos;
 
-	PlayerInfo(int num, int x, int y) {
+	void print() {
+		printf("%d	%d	%d\n", m_playerNum, xPos, yPos);
+	}
+	void set(int num, int x, int y) {
 		m_playerNum = num;
 		xPos = x;
 		yPos = y;
-	}
-	void print() {
-		printf("%d	%d	%d\n", m_playerNum, xPos, yPos);
 	}
 };
 #pragma pack()
@@ -33,7 +33,6 @@ private:
 	char							m_sendBuf[MAX_BUF];
 	char							m_sendLen[1];
 
-	bool							move;
 	UINT							m_playerNum;
 	int								xPos, yPos;
 

@@ -88,10 +88,9 @@ void ObjectMgr::MovePlayer(int xPos, int yPos)
 
 void ObjectMgr::MovePlayers(char * dataes)
 {
-	for (int i = 0; i < clientNum; ++i) {
-		memcpy(playerInfo + sizeof(PlayerInfo)*i, dataes + sizeof(PlayerInfo)*i, sizeof(PlayerInfo));
+	memcpy(playerInfo, dataes, sizeof(PlayerInfo)*clientNum);
 
-		playerInfo[i].print();
+	for (int i = 0; i < clientNum; ++i) {
 		int applyX = playerStartX + (playerInfo[i].xPos * MoveValue);
 		int applyY = playerStartY + (playerInfo[i].yPos * -MoveValue);
 		m_Player[playerInfo[i].m_playerNum]->Move(applyX, applyY);

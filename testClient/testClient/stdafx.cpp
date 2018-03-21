@@ -1,4 +1,5 @@
 #include "stdafx.h"
+int				clientNum=1;
 
 void error_quit(char* msg)
 {
