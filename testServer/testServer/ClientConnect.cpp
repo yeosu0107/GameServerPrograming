@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "ClientConnect.h"
-
-UINT g_nextID = 0;
+#include <deque>
+//UINT g_nextID = 0;
+deque<UINT> g_nextID = { 0,1,2,3,4,5,6,7,8,9 };
 
 ClientConnect::ClientConnect(SOCKET tmpSocket) :
 	m_socket(tmpSocket),  m_playerNum(0)
@@ -91,10 +92,18 @@ bool AddSocket(SOCKET socket)
 		return false;
 	}
 	ClientConnect* client = new ClientConnect(socket);
-	client->setPlayer(g_nextID++);
-	if (g_nextID >= MAX_CLIENT)
-		g_nextID = 0;
-	g_ClientArray[g_nClient] = client;
+	client->setPlayer(g_nextID[0]);
+	g_nextID.pop_front();
+	//if (g_nextID >= MAX_CLIENT)
+	//	g_nextID = 0;
+	for (int i = 0; i < MAX_CLIENT; ++i) {
+		if (g_ClientArray[i] == nullptr) {
+			//client->setPlayer(i);
+			g_ClientArray[i] = client;
+			break;
+		}
+	}
+	
 	g_nClient += 1;
 
 	return true;
@@ -103,7 +112,7 @@ bool AddSocket(SOCKET socket)
 void RemoveSocket(int index)
 {
 	ClientConnect* client = g_ClientArray[index];
-
+	g_nextID.push_back(g_ClientArray[index]->getPlayerNum());
 	closesocket(client->getSocket());
 	delete client;
 
@@ -114,6 +123,7 @@ void RemoveSocket(int index)
 	
 	if(g_ClientArray[g_nClient-1])
 		delete g_ClientArray[g_nClient - 1];
+	g_ClientArray[g_nClient - 1] = nullptr;
 
 	g_nClient -= 1;
 }

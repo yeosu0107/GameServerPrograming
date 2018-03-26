@@ -52,7 +52,7 @@ public:
 
 	SOCKET getSocket() { return m_socket; }
 	PacketType getType() { return m_packet; }
-	
+	UINT	getPlayerNum() const { return m_playerNum; }
 };
 
 bool AddSocket(SOCKET socket);
