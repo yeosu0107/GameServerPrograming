@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ServerConnect.h"
 
-#define TEST
+//#define TEST
 
 ServerConnect::ServerConnect() : m_InputKeyData(0)
 {
