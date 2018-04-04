@@ -91,6 +91,22 @@ void SendPacket(int id, void* packet) {
 		<< (int)p[1] << "] size [" << (int)p[0] << "]\n";
 }
 
+void DisconnectPlayer(int id) {
+	closesocket(g_clients[id].s);
+	g_clients[id].is_use = false;
+	cout << "Client [" << id << "] DisConnected\n";
+
+	sc_packet_remove_player p;
+	p.id = id;
+	p.size = sizeof(p);
+	p.type = SC_REMOVE_PLAYER;
+
+	for (int i = 0; i < MAX_USER; ++i) {
+		if (g_clients[i].is_use)
+			SendPacket(i, &p);
+	}
+}
+
 void ProcessPacket(int clientID, char* packet) {
 	cs_packet_up* p = reinterpret_cast<cs_packet_up*>(packet);
 
@@ -127,7 +143,11 @@ void ProcessPacket(int clientID, char* packet) {
 	posPacket.x = g_clients[clientID].x;
 	posPacket.y = g_clients[clientID].y;
 
-	SendPacket(clientID, &posPacket);
+	//SendPacket(clientID, &posPacket);
+	for (int i = 0; i < MAX_USER; ++i) {
+		if (g_clients[i].is_use)
+			SendPacket(i, &posPacket);
+	}
 }
 
 void WorkerThread() 
@@ -145,12 +165,12 @@ void WorkerThread()
 		// 에러 처리
 		if (is_success == FALSE) {
 			cout << "Error is GQCS key [" << key << "]\n";
+			DisconnectPlayer(key);
 			continue;
 		}
 		// 접속 종료 처리
 		if (data_size == 0) {
-			closesocket(g_clients[key].s);
-			g_clients[key].is_use = false;
+			DisconnectPlayer(key);
 			continue;
 		}
 		// Send / Recv 처리
@@ -265,9 +285,26 @@ void AcceptThread()
 		p.id = new_key;
 		p.size = sizeof(sc_packet_put_player);
 		p.type = SC_PUT_PLAYER;
-		p.x = 4;
-		p.y = 4;
-		SendPacket(new_key, &p);
+		p.x = g_clients[new_key].x;
+		p.y = g_clients[new_key].y;
+
+		//나의 접속을 다른 플레이어에게 알림
+		for (int i = 0; i < MAX_USER; ++i) {
+			if(g_clients[i].is_use)
+				SendPacket(i, &p);
+		}
+
+		//나에게 접속중인 다른 플레이어의 정보를 전송
+		for (int i = 0; i < MAX_USER; ++i) {
+			if (g_clients[i].is_use) {
+				if (i != new_key) {
+					p.id = i;
+					p.x = g_clients[i].x;
+					p.y = g_clients[i].y;
+					SendPacket(new_key, &p);
+				}
+			}
+		}
 	}
 }
 
