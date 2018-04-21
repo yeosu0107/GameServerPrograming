@@ -26,8 +26,8 @@
 // defines for windows 
 #define WINDOW_CLASS_NAME L"WINXCLASS"  // class name
 
-#define WINDOW_WIDTH    680   // size of window
-#define WINDOW_HEIGHT   730
+#define WINDOW_WIDTH    750   // size of window 680
+#define WINDOW_HEIGHT   790
 
 #define	BUF_SIZE				1024
 #define	WM_SOCKET				WM_USER + 1
@@ -47,6 +47,7 @@ char buffer[80];                // used to print text
 
 // demo globals
 BOB			player;				// 플레이어 Unit
+BOB			tree[13*13];
 BOB			npc[NUM_OF_NPC];      // NPC Unit
 BOB         skelaton[MAX_USER];     // the other player skelaton
 
@@ -57,6 +58,7 @@ BITMAP_IMAGE white_tile;
 #define TILE_WIDTH 65
 
 #define UNIT_TEXTURE  0
+#define UINT_TREE_TEXTURE 1
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -106,8 +108,8 @@ void ProcessPacket(char *ptr)
 		sc_packet_pos *my_packet = reinterpret_cast<sc_packet_pos *>(ptr);
 		int other_id = my_packet->id;
 		if (other_id == g_myid) {
-			g_left_x = my_packet->x - 4;
-			g_top_y = my_packet->y - 4;
+			g_left_x = my_packet->x - 5;
+			g_top_y = my_packet->y - 5;
 			player.x = my_packet->x;
 			player.y = my_packet->y;
 		} else if (other_id < NPC_START) {
@@ -395,9 +397,27 @@ white_tile.width = TILE_WIDTH;
 // now let's load in all the frames for the skelaton!!!
 
 	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 384, 64);
+	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, 64, 64);
 
 	if (!Create_BOB32(&player,0,0,64,64,1,BOB_ATTR_SINGLE_FRAME)) return(0);
 	Load_Frame_BOB32(&player,UNIT_TEXTURE,0,2,0,BITMAP_EXTRACT_MODE_CELL);
+
+	int index = 0;
+	for (int i = 0; i < 13; ++i) {
+		for (int j = 0; j < 13; ++j) {
+			if (!Create_BOB32(&tree[index], 0, 0, 64, 64, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
+			Load_Frame_BOB32(&tree[index], UINT_TREE_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
+
+			Set_Animation_BOB32(&tree[index], 0);
+			Set_Anim_Speed_BOB32(&tree[index], 4);
+			Set_Vel_BOB32(&tree[index], 0, 0);
+			Set_Pos_BOB32(&tree[index], i * 8, j *8);
+			tree[index].attr |= BOB_ATTR_VISIBLE;
+
+			index += 1;
+		}
+	}
+	
 
 	// set up stating state of skelaton
 	Set_Animation_BOB32(&player, 0);
@@ -518,8 +538,8 @@ DD_Fill_Surface(D3DCOLOR_ARGB(255,0,0,0));
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE );
 
 	// draw the background reactor image
-	for (int i=0; i<10; ++i)
-		for (int j=0; j<10; ++j)
+	for (int i=0; i<11; ++i)
+		for (int j=0; j<11; ++j)
 		{
 			int tile_x = i + g_left_x;
 			int tile_y = j + g_top_y;
@@ -539,6 +559,9 @@ DD_Fill_Surface(D3DCOLOR_ARGB(255,0,0,0));
 	Draw_BOB32(&player);
 	for (int i=0;i<MAX_USER;++i) Draw_BOB32(&skelaton[i]);
 	for (int i=NPC_START;i<NUM_OF_NPC;++i) Draw_BOB32(&npc[i]);
+
+	//draw trees
+	for (int i = 0; i < 13*13; ++i) Draw_BOB32(&tree[i]);
 
 	// draw some text
 	wchar_t text[300];

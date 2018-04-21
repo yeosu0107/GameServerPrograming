@@ -347,8 +347,8 @@ void AcceptThread()
 		}
 		cout << "New Client's ID : " << new_key << endl;
 		g_clients[new_key].s = new_socket;
-		g_clients[new_key].x = 4;
-		g_clients[new_key].y = 4;
+		g_clients[new_key].x = 5;
+		g_clients[new_key].y = 5;
 		ZeroMemory(&g_clients[new_key].exover.wsaover, sizeof(WSAOVERLAPPED));
 
 		CreateIoCompletionPort(reinterpret_cast<HANDLE>(new_socket), 
