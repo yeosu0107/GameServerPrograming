@@ -7,6 +7,8 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <unordered_set>
+#include <mutex>
 
 #include "protocol.h"
 
@@ -27,6 +29,10 @@ struct CLIENT {
 	SOCKET s;
 	bool is_use;
 	char x, y;
+	unordered_set<int> viewlist;
+	mutex vlm;
+
+	//for io func
 	EXOver exover;
 	int packet_size;
 	int prev_size;
@@ -47,6 +53,12 @@ void err_display(const char* msg, int err_no) {
 	//printf("% s", msg);
 	wcout << L"에러 " << lpMsgBuf << endl;
 	LocalFree(lpMsgBuf);
+}
+
+bool CanSee(int cl1, int cl2) {
+	int dist_sq = (g_clients[cl1].x - g_clients[cl2].x)*(g_clients[cl1].x - g_clients[cl2].x) +
+		(g_clients[cl1].y - g_clients[cl2].y)*(g_clients[cl1].y - g_clients[cl2].y);
+	return (dist_sq <= VIEW_RADIUS * VIEW_RADIUS);
 }
 
 void Initialize() {
@@ -91,9 +103,29 @@ void SendPacket(int id, void* packet) {
 		<< (int)p[1] << "] size [" << (int)p[0] << "]\n";
 }
 
+void SendPutObject(int client, int object) {
+	sc_packet_put_player p;
+	p.id = object;
+	p.size = sizeof(p);
+	p.type = SC_PUT_PLAYER;
+	p.x = g_clients[object].x;
+	p.y = g_clients[object].y;
+	
+	SendPacket(client, &p);
+}
+
+void SendRemoveObject(int client, int object) {
+	sc_packet_remove_player p;
+	p.id = object;
+	p.size = sizeof(p);
+	p.type = SC_REMOVE_PLAYER;
+
+	SendPacket(client, &p);
+}
+
 void DisconnectPlayer(int id) {
 	closesocket(g_clients[id].s);
-	g_clients[id].is_use = false;
+	
 	cout << "Client [" << id << "] DisConnected\n";
 
 	sc_packet_remove_player p;
@@ -101,10 +133,16 @@ void DisconnectPlayer(int id) {
 	p.size = sizeof(p);
 	p.type = SC_REMOVE_PLAYER;
 
-	for (int i = 0; i < MAX_USER; ++i) {
-		if (g_clients[i].is_use)
-			SendPacket(i, &p);
+	for (auto& i : g_clients[id].viewlist) {
+		if (g_clients[i].is_use) {
+			if (g_clients[i].viewlist.count(id) != 0) {
+				g_clients[i].viewlist.erase(id);
+				SendPacket(i, &p);
+			}
+		}
 	}
+	g_clients[id].viewlist.clear();
+	g_clients[id].is_use = false;
 }
 
 void ProcessPacket(int clientID, char* packet) {
@@ -143,10 +181,57 @@ void ProcessPacket(int clientID, char* packet) {
 	posPacket.x = g_clients[clientID].x;
 	posPacket.y = g_clients[clientID].y;
 
-	//SendPacket(clientID, &posPacket);
-	for (int i = 0; i < MAX_USER; ++i) {
+	/*for (int i = 0; i < MAX_USER; ++i) {
 		if (g_clients[i].is_use)
 			SendPacket(i, &posPacket);
+	}*/
+	unordered_set<int> new_viewList;
+	for (int i = 0; i < MAX_USER; ++i) {
+		if (i == clientID) continue;
+		if (!g_clients[i].is_use) continue;
+		if (!CanSee(clientID, i)) continue;
+		new_viewList.insert(i);
+	}
+	SendPacket(clientID, &posPacket);
+	for (auto& id : new_viewList) {
+		//새로 viewlist에 들어오는 객체 처리
+		if (g_clients[clientID].viewlist.count(id) == 0) {
+			g_clients[clientID].viewlist.insert(id);
+			SendPutObject(clientID, id);
+
+			if (g_clients[id].viewlist.count(clientID) == 0) {
+				g_clients[id].viewlist.insert(clientID);
+				SendPutObject(id, clientID);
+			}
+			else {
+				SendPacket(id, &posPacket);
+			}
+		}
+		else {
+			//view에 계속 남아있는 객체 처리
+			if (g_clients[id].viewlist.count(clientID) == 0) {
+				SendPutObject(id, clientID);
+				g_clients[id].viewlist.insert(clientID);
+			}
+			else
+				SendPacket(id, &posPacket);
+		}
+	}
+	//viewlist에서 나가는 객체 처리
+	vector<int> tmpDeleteList;
+	for (auto& id : g_clients[clientID].viewlist) {
+		if (0 == new_viewList.count(id)) {
+			if (0 != g_clients[id].viewlist.count(clientID)) {
+				g_clients[id].viewlist.erase(clientID);
+				SendRemoveObject(id, clientID);
+			}
+			tmpDeleteList.emplace_back(id);
+		}
+	}
+
+	for (auto& delid : tmpDeleteList) {
+		g_clients[clientID].viewlist.erase(delid);
+		SendRemoveObject(clientID, delid);
 	}
 }
 
@@ -269,6 +354,7 @@ void AcceptThread()
 		CreateIoCompletionPort(reinterpret_cast<HANDLE>(new_socket), 
 			g_iocp, new_key, 0); 
 
+		g_clients[new_key].viewlist.clear();
 		g_clients[new_key].is_use = true;
 
 		unsigned long flag = 0;
@@ -288,21 +374,33 @@ void AcceptThread()
 		p.x = g_clients[new_key].x;
 		p.y = g_clients[new_key].y;
 
-		//나의 접속을 다른 플레이어에게 알림
+		//나의 접속을 다른 플레이어에게 알림 (나를 포함)
 		for (int i = 0; i < MAX_USER; ++i) {
-			if(g_clients[i].is_use)
+			if (g_clients[i].is_use) {
+				if (!CanSee(i, new_key))
+					continue;
+				g_clients[i].vlm.lock();
+				if(i != new_key)
+					g_clients[i].viewlist.insert(new_key);
+				g_clients[i].vlm.unlock();
 				SendPacket(i, &p);
+			}
 		}
 
 		//나에게 접속중인 다른 플레이어의 정보를 전송
 		for (int i = 0; i < MAX_USER; ++i) {
 			if (g_clients[i].is_use) {
-				if (i != new_key) {
-					p.id = i;
-					p.x = g_clients[i].x;
-					p.y = g_clients[i].y;
-					SendPacket(new_key, &p);
-				}
+				if (i == new_key)
+					continue;
+				if (!CanSee(i, new_key))
+					continue;
+				p.id = i;
+				p.x = g_clients[i].x;
+				p.y = g_clients[i].y;
+				g_clients[new_key].vlm.lock();
+				g_clients[new_key].viewlist.insert(i);
+				g_clients[new_key].vlm.unlock();
+				SendPacket(new_key, &p);
 			}
 		}
 	}

@@ -2,8 +2,8 @@
 #define MAX_BUFF_SIZE   4000
 #define MAX_PACKET_SIZE  255
 
-#define BOARD_WIDTH   400
-#define BOARD_HEIGHT  400
+#define BOARD_WIDTH   100
+#define BOARD_HEIGHT  100
 
 #define VIEW_RADIUS   3
 
