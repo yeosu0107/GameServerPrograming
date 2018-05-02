@@ -30,7 +30,7 @@ class Object {
 public:
 	SOCKET s;
 	bool is_use;
-	char x, y;
+	int x, y;
 };
 
 class Client : public Object{
@@ -394,8 +394,8 @@ void AcceptThread()
 		}
 		cout << "New Client's ID : " << new_key << endl;
 		g_clients[new_key].s = new_socket;
-		g_clients[new_key].x = 5;
-		g_clients[new_key].y = 5;
+		g_clients[new_key].x = 10;
+		g_clients[new_key].y = 10;
 		ZeroMemory(&g_clients[new_key].exover.wsaover, sizeof(WSAOVERLAPPED));
 
 		CreateIoCompletionPort(reinterpret_cast<HANDLE>(new_socket), 
@@ -450,22 +450,22 @@ void AcceptThread()
 				SendPacket(new_key, &p);
 			}
 		}
-		//주위에 있는 NPC의 정보를 알려줌 (여기부터 해야됨)
-		for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
-			if (g_clients[i].is_use) {
-				if (i == new_key)
-					continue;
-				if (!CanSee(i, new_key))
-					continue;
-				p.id = i;
-				p.x = g_clients[i].x;
-				p.y = g_clients[i].y;
-				g_clients[new_key].vlm.lock();
-				g_clients[new_key].viewlist.insert(i);
-				g_clients[new_key].vlm.unlock();
-				SendPacket(new_key, &p);
-			}
-		}
+		////주위에 있는 NPC의 정보를 알려줌 (여기부터 해야됨)
+		//for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
+		//	if (g_clients[i].is_use) {
+		//		if (i == new_key)
+		//			continue;
+		//		if (!CanSee(i, new_key))
+		//			continue;
+		//		p.id = i;
+		//		p.x = g_clients[i].x;
+		//		p.y = g_clients[i].y;
+		//		g_clients[new_key].vlm.lock();
+		//		g_clients[new_key].viewlist.insert(i);
+		//		g_clients[new_key].vlm.unlock();
+		//		SendPacket(new_key, &p);
+		//	}
+		//}
 	}
 }
 

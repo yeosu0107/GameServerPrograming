@@ -2,8 +2,8 @@
 #define MAX_BUFF_SIZE   4000
 #define MAX_PACKET_SIZE  255
 
-#define BOARD_WIDTH   100
-#define BOARD_HEIGHT  100
+#define BOARD_WIDTH   400
+#define BOARD_HEIGHT  400
 
 #define VIEW_RADIUS   3
 
@@ -59,16 +59,16 @@ struct sc_packet_pos {
 	BYTE size;
 	BYTE type;
 	WORD id;
-	BYTE x;
-	BYTE y;
+	UINT x;
+	UINT y;
 };
 
 struct sc_packet_put_player {
 	BYTE size;
 	BYTE type;
 	WORD id;
-	BYTE x;
-	BYTE y;
+	UINT x;
+	UINT y;
 };
 struct sc_packet_remove_player {
 	BYTE size;

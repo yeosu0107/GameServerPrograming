@@ -26,8 +26,8 @@
 // defines for windows 
 #define WINDOW_CLASS_NAME L"WINXCLASS"  // class name
 
-#define WINDOW_WIDTH    750   // size of window 680
-#define WINDOW_HEIGHT   790
+#define WINDOW_WIDTH    950   // size of window 680
+#define WINDOW_HEIGHT   990
 
 #define	BUF_SIZE				1024
 #define	WM_SOCKET				WM_USER + 1
@@ -55,7 +55,7 @@ BITMAP_IMAGE reactor;      // the background
 
 BITMAP_IMAGE black_tile;
 BITMAP_IMAGE white_tile;
-#define TILE_WIDTH 65
+#define TILE_WIDTH 44
 
 #define UNIT_TEXTURE  0
 #define UINT_TREE_TEXTURE 1
@@ -108,8 +108,8 @@ void ProcessPacket(char *ptr)
 		sc_packet_pos *my_packet = reinterpret_cast<sc_packet_pos *>(ptr);
 		int other_id = my_packet->id;
 		if (other_id == g_myid) {
-			g_left_x = my_packet->x - 5;
-			g_top_y = my_packet->y - 5;
+			g_left_x = my_packet->x - 10;
+			g_top_y = my_packet->y - 10;
 			player.x = my_packet->x;
 			player.y = my_packet->y;
 		} else if (other_id < NPC_START) {
@@ -396,16 +396,16 @@ white_tile.width = TILE_WIDTH;
 
 // now let's load in all the frames for the skelaton!!!
 
-	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 384, 64);
-	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, 64, 64);
+	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 276, 44);
+	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, 44, 44);
 
-	if (!Create_BOB32(&player,0,0,64,64,1,BOB_ATTR_SINGLE_FRAME)) return(0);
+	if (!Create_BOB32(&player,0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) return(0);
 	Load_Frame_BOB32(&player,UNIT_TEXTURE,0,2,0,BITMAP_EXTRACT_MODE_CELL);
 
 	int index = 0;
 	for (int i = 0; i < 13; ++i) {
 		for (int j = 0; j < 13; ++j) {
-			if (!Create_BOB32(&tree[index], 0, 0, 64, 64, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
+			if (!Create_BOB32(&tree[index], 0, 0, 44, 44, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
 			Load_Frame_BOB32(&tree[index], UINT_TREE_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
 
 			Set_Animation_BOB32(&tree[index], 0);
@@ -428,7 +428,7 @@ white_tile.width = TILE_WIDTH;
 
 	// create skelaton bob
 	for (int i=0; i < MAX_USER; ++i) {
-		if (!Create_BOB32(&skelaton[i],0,0,64,64,1,BOB_ATTR_SINGLE_FRAME)) 
+		if (!Create_BOB32(&skelaton[i],0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) 
 			return(0);
 		Load_Frame_BOB32(&skelaton[i],UNIT_TEXTURE,0,0,0,BITMAP_EXTRACT_MODE_CELL);
 
@@ -441,7 +441,7 @@ white_tile.width = TILE_WIDTH;
 
 	// create skelaton bob
 	for (int i=0; i < NUM_OF_NPC; ++i) {
-		if (!Create_BOB32(&npc[i],0,0,64,64,1,BOB_ATTR_SINGLE_FRAME)) 
+		if (!Create_BOB32(&npc[i],0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) 
 			return(0);
 		Load_Frame_BOB32(&npc[i],UNIT_TEXTURE,0,4,0,BITMAP_EXTRACT_MODE_CELL);
 
@@ -538,8 +538,8 @@ DD_Fill_Surface(D3DCOLOR_ARGB(255,0,0,0));
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE );
 
 	// draw the background reactor image
-	for (int i=0; i<11; ++i)
-		for (int j=0; j<11; ++j)
+	for (int i=0; i<21; ++i)
+		for (int j=0; j<21; ++j)
 		{
 			int tile_x = i + g_left_x;
 			int tile_y = j + g_top_y;
