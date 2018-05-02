@@ -25,10 +25,17 @@ struct EXOver {
 	char io_buf[MAX_BUFF_SIZE];
 };
 
-struct CLIENT {
+class Object {
+
+public:
 	SOCKET s;
 	bool is_use;
 	char x, y;
+};
+
+class Client : public Object{
+
+public:
 	unordered_set<int> viewlist;
 	mutex vlm;
 
@@ -39,7 +46,10 @@ struct CLIENT {
 	char prev_packet[MAX_PACKET_SIZE];
 };
 
-CLIENT g_clients[MAX_USER];
+Client g_clients[NUM_OF_NPC];
+//array<Client, NUM_OF_NPC> g_clients;
+
+//CLIENT g_clients[NUM_OF_NPC];
 
 void err_display(const char* msg, int err_no) {
 	WCHAR * lpMsgBuf;
@@ -63,7 +73,6 @@ bool CanSee(int cl1, int cl2) {
 
 void Initialize() {
 	wcout.imbue(locale("korean"));
-	//wcout << L"한글 메세지 출력 테스트\n";
 
 	for (auto& p : g_clients) {
 		p.is_use = false;
@@ -72,6 +81,11 @@ void Initialize() {
 		p.exover.wsabuf.len = sizeof(p.exover.io_buf);
 		p.packet_size = 0;
 		p.prev_size = 0;
+	}
+
+	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
+		g_clients[i].x = rand() % BOARD_WIDTH;
+		g_clients[i].y = rand() % BOARD_HEIGHT;
 	}
 
 	WSADATA	wsadata;
@@ -133,15 +147,24 @@ void DisconnectPlayer(int id) {
 	p.size = sizeof(p);
 	p.type = SC_REMOVE_PLAYER;
 
-	for (auto& i : g_clients[id].viewlist) {
+	g_clients[id].vlm.lock();
+	unordered_set<int> vl_copy = g_clients[id].viewlist;
+	g_clients[id].viewlist.clear();
+	g_clients[id].vlm.unlock();
+
+	for (auto& i : vl_copy) {
+		g_clients[i].vlm.lock();
 		if (g_clients[i].is_use) {
 			if (g_clients[i].viewlist.count(id) != 0) {
 				g_clients[i].viewlist.erase(id);
+				g_clients[i].vlm.unlock();
 				SendPacket(i, &p);
 			}
 		}
+		else {
+			g_clients[i].vlm.unlock();
+		}
 	}
-	g_clients[id].viewlist.clear();
 	g_clients[id].is_use = false;
 }
 
@@ -195,42 +218,66 @@ void ProcessPacket(int clientID, char* packet) {
 	SendPacket(clientID, &posPacket);
 	for (auto& id : new_viewList) {
 		//새로 viewlist에 들어오는 객체 처리
+		g_clients[clientID].vlm.lock();
 		if (g_clients[clientID].viewlist.count(id) == 0) {
 			g_clients[clientID].viewlist.insert(id);
+			g_clients[clientID].vlm.unlock();
 			SendPutObject(clientID, id);
 
+			g_clients[id].vlm.lock();
 			if (g_clients[id].viewlist.count(clientID) == 0) {
 				g_clients[id].viewlist.insert(clientID);
+				g_clients[id].vlm.unlock();
 				SendPutObject(id, clientID);
 			}
 			else {
+				g_clients[id].vlm.unlock();
 				SendPacket(id, &posPacket);
 			}
 		}
 		else {
+			g_clients[clientID].vlm.unlock();
 			//view에 계속 남아있는 객체 처리
+			g_clients[id].vlm.lock();
 			if (g_clients[id].viewlist.count(clientID) == 0) {
-				SendPutObject(id, clientID);
 				g_clients[id].viewlist.insert(clientID);
+				g_clients[id].vlm.unlock();
+				SendPutObject(id, clientID);
 			}
-			else
+			else {
+				g_clients[id].vlm.unlock();
 				SendPacket(id, &posPacket);
+			}
 		}
 	}
 	//viewlist에서 나가는 객체 처리
 	vector<int> tmpDeleteList;
-	for (auto& id : g_clients[clientID].viewlist) {
+	g_clients[clientID].vlm.lock();
+	unordered_set<int> old_vl = g_clients[clientID].viewlist;
+	g_clients[clientID].vlm.unlock();
+	for (auto& id : old_vl) {
 		if (0 == new_viewList.count(id)) {
+			//g_clients[clientID].vlm.lock();
+			//g_clients[clientID].viewlist.erase(id);
+			//g_clients[clientID].vlm.unlock();
+			
+			g_clients[id].vlm.lock();
 			if (0 != g_clients[id].viewlist.count(clientID)) {
 				g_clients[id].viewlist.erase(clientID);
+				g_clients[id].vlm.unlock();
 				SendRemoveObject(id, clientID);
 			}
+			else
+				g_clients[id].vlm.unlock();
 			tmpDeleteList.emplace_back(id);
 		}
 	}
 
+
 	for (auto& delid : tmpDeleteList) {
+		g_clients[clientID].vlm.lock();
 		g_clients[clientID].viewlist.erase(delid);
+		g_clients[clientID].vlm.unlock();
 		SendRemoveObject(clientID, delid);
 	}
 }
@@ -389,6 +436,22 @@ void AcceptThread()
 
 		//나에게 접속중인 다른 플레이어의 정보를 전송
 		for (int i = 0; i < MAX_USER; ++i) {
+			if (g_clients[i].is_use) {
+				if (i == new_key)
+					continue;
+				if (!CanSee(i, new_key))
+					continue;
+				p.id = i;
+				p.x = g_clients[i].x;
+				p.y = g_clients[i].y;
+				g_clients[new_key].vlm.lock();
+				g_clients[new_key].viewlist.insert(i);
+				g_clients[new_key].vlm.unlock();
+				SendPacket(new_key, &p);
+			}
+		}
+		//주위에 있는 NPC의 정보를 알려줌 (여기부터 해야됨)
+		for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
 			if (g_clients[i].is_use) {
 				if (i == new_key)
 					continue;
