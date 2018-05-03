@@ -396,16 +396,16 @@ white_tile.width = TILE_WIDTH;
 
 // now let's load in all the frames for the skelaton!!!
 
-	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 276, 44);
-	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, 44, 44);
+	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 276, TILE_WIDTH);
+	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, TILE_WIDTH, TILE_WIDTH);
 
-	if (!Create_BOB32(&player,0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) return(0);
+	if (!Create_BOB32(&player,0,0, TILE_WIDTH, TILE_WIDTH,1,BOB_ATTR_SINGLE_FRAME)) return(0);
 	Load_Frame_BOB32(&player,UNIT_TEXTURE,0,2,0,BITMAP_EXTRACT_MODE_CELL);
 
 	int index = 0;
 	for (int i = 0; i < 13; ++i) {
 		for (int j = 0; j < 13; ++j) {
-			if (!Create_BOB32(&tree[index], 0, 0, 44, 44, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
+			if (!Create_BOB32(&tree[index], 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
 			Load_Frame_BOB32(&tree[index], UINT_TREE_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
 
 			Set_Animation_BOB32(&tree[index], 0);
@@ -428,7 +428,7 @@ white_tile.width = TILE_WIDTH;
 
 	// create skelaton bob
 	for (int i=0; i < MAX_USER; ++i) {
-		if (!Create_BOB32(&skelaton[i],0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) 
+		if (!Create_BOB32(&skelaton[i],0,0, TILE_WIDTH, TILE_WIDTH,1,BOB_ATTR_SINGLE_FRAME))
 			return(0);
 		Load_Frame_BOB32(&skelaton[i],UNIT_TEXTURE,0,0,0,BITMAP_EXTRACT_MODE_CELL);
 
@@ -441,7 +441,7 @@ white_tile.width = TILE_WIDTH;
 
 	// create skelaton bob
 	for (int i=0; i < NUM_OF_NPC; ++i) {
-		if (!Create_BOB32(&npc[i],0,0,44,44,1,BOB_ATTR_SINGLE_FRAME)) 
+		if (!Create_BOB32(&npc[i],0,0, TILE_WIDTH, TILE_WIDTH,1,BOB_ATTR_SINGLE_FRAME))
 			return(0);
 		Load_Frame_BOB32(&npc[i],UNIT_TEXTURE,0,4,0,BITMAP_EXTRACT_MODE_CELL);
 

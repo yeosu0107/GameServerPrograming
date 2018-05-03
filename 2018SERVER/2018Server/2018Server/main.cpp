@@ -26,15 +26,15 @@ struct EXOver {
 };
 
 class Object {
-
 public:
 	SOCKET s;
-	bool is_use;
+	bool is_use = false;
 	int x, y;
+
+	int zone_x, zone_y;
 };
 
 class Client : public Object{
-
 public:
 	unordered_set<int> viewlist;
 	mutex vlm;
@@ -44,10 +44,21 @@ public:
 	int packet_size;
 	int prev_size;
 	char prev_packet[MAX_PACKET_SIZE];
+
+	Client() {
+		exover.is_recv = true;
+		exover.wsabuf.buf = exover.io_buf;
+		exover.wsabuf.len = sizeof(exover.io_buf);
+		packet_size = 0;
+		prev_size = 0;
+	}
 };
 
-Client g_clients[NUM_OF_NPC];
+//Client g_clients[NUM_OF_NPC];
 //array<Client, NUM_OF_NPC> g_clients;
+vector<Client> g_clients(NUM_OF_NPC);
+
+unordered_set<int> g_zone[20][20];
 
 //CLIENT g_clients[NUM_OF_NPC];
 
@@ -74,18 +85,15 @@ bool CanSee(int cl1, int cl2) {
 void Initialize() {
 	wcout.imbue(locale("korean"));
 
-	for (auto& p : g_clients) {
-		p.is_use = false;
-		p.exover.is_recv = true;
-		p.exover.wsabuf.buf = p.exover.io_buf;
-		p.exover.wsabuf.len = sizeof(p.exover.io_buf);
-		p.packet_size = 0;
-		p.prev_size = 0;
-	}
-
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
+		g_clients[i].is_use = true;
 		g_clients[i].x = rand() % BOARD_WIDTH;
 		g_clients[i].y = rand() % BOARD_HEIGHT;
+
+		g_clients[i].zone_x = g_clients[i].x / 20;
+		g_clients[i].zone_y = g_clients[i].y / 20;
+
+		g_zone[g_clients[i].zone_y][g_clients[i].zone_x].insert(i);
 	}
 
 	WSADATA	wsadata;
@@ -196,6 +204,16 @@ void ProcessPacket(int clientID, char* packet) {
 		cout << "Unknown Protocol from Client [" << clientID << "]\n";
 		return;
 	}
+	int prev_x = g_clients[clientID].zone_x;
+	int prev_y = g_clients[clientID].zone_y;
+
+	g_clients[clientID].zone_x = g_clients[clientID].x / 20;
+	g_clients[clientID].zone_y = g_clients[clientID].y / 20;
+
+	if (g_clients[clientID].zone_x != prev_x || g_clients[clientID].zone_y != prev_y) {
+		g_zone[prev_y][prev_x].erase(clientID);
+		g_zone[g_clients[clientID].zone_y][g_clients[clientID].zone_x].insert(clientID);
+	}
 
 	sc_packet_pos posPacket;
 	posPacket.id = clientID;
@@ -204,18 +222,24 @@ void ProcessPacket(int clientID, char* packet) {
 	posPacket.x = g_clients[clientID].x;
 	posPacket.y = g_clients[clientID].y;
 
-	/*for (int i = 0; i < MAX_USER; ++i) {
-		if (g_clients[i].is_use)
-			SendPacket(i, &posPacket);
-	}*/
 	unordered_set<int> new_viewList;
-	for (int i = 0; i < MAX_USER; ++i) {
+
+	for (auto& i : g_zone[g_clients[clientID].zone_y][g_clients[clientID].zone_x]) {
 		if (i == clientID) continue;
 		if (!g_clients[i].is_use) continue;
+
 		if (!CanSee(clientID, i)) continue;
 		new_viewList.insert(i);
 	}
-	SendPacket(clientID, &posPacket);
+
+	//for (int i = 0; i < NUM_OF_NPC; ++i) {
+	//	if (i == clientID) continue;
+	//	if (!g_clients[i].is_use) continue;
+
+	//	if (!CanSee(clientID, i)) continue;
+	//	new_viewList.insert(i);
+	//}
+	
 	for (auto& id : new_viewList) {
 		//새로 viewlist에 들어오는 객체 처리
 		g_clients[clientID].vlm.lock();
@@ -224,6 +248,8 @@ void ProcessPacket(int clientID, char* packet) {
 			g_clients[clientID].vlm.unlock();
 			SendPutObject(clientID, id);
 
+			if (id >= NPC_START)
+				continue;
 			g_clients[id].vlm.lock();
 			if (g_clients[id].viewlist.count(clientID) == 0) {
 				g_clients[id].viewlist.insert(clientID);
@@ -237,6 +263,8 @@ void ProcessPacket(int clientID, char* packet) {
 		}
 		else {
 			g_clients[clientID].vlm.unlock();
+			if (id >= NPC_START)
+				continue;
 			//view에 계속 남아있는 객체 처리
 			g_clients[id].vlm.lock();
 			if (g_clients[id].viewlist.count(clientID) == 0) {
@@ -257,10 +285,9 @@ void ProcessPacket(int clientID, char* packet) {
 	g_clients[clientID].vlm.unlock();
 	for (auto& id : old_vl) {
 		if (0 == new_viewList.count(id)) {
-			//g_clients[clientID].vlm.lock();
-			//g_clients[clientID].viewlist.erase(id);
-			//g_clients[clientID].vlm.unlock();
-			
+			tmpDeleteList.emplace_back(id);
+			if (id >= NPC_START)
+				continue;
 			g_clients[id].vlm.lock();
 			if (0 != g_clients[id].viewlist.count(clientID)) {
 				g_clients[id].viewlist.erase(clientID);
@@ -269,7 +296,7 @@ void ProcessPacket(int clientID, char* packet) {
 			}
 			else
 				g_clients[id].vlm.unlock();
-			tmpDeleteList.emplace_back(id);
+			
 		}
 	}
 
@@ -280,6 +307,8 @@ void ProcessPacket(int clientID, char* packet) {
 		g_clients[clientID].vlm.unlock();
 		SendRemoveObject(clientID, delid);
 	}
+
+	SendPacket(clientID, &posPacket);
 }
 
 void WorkerThread() 
@@ -421,13 +450,21 @@ void AcceptThread()
 		p.x = g_clients[new_key].x;
 		p.y = g_clients[new_key].y;
 
+		g_clients[new_key].zone_x = p.x / 20;
+		g_clients[new_key].zone_y = p.y / 20;
+
+		g_zone[g_clients[new_key].zone_y][g_clients[new_key].zone_x].insert(new_key);
+
 		//나의 접속을 다른 플레이어에게 알림 (나를 포함)
-		for (int i = 0; i < MAX_USER; ++i) {
+		//같은 존에 있는 플레이어에만 알림
+		for (auto& i : g_zone[g_clients[new_key].zone_y][g_clients[new_key].zone_x]) {
+			if (i >= MAX_USER) //user가 아니면 무시
+				continue;
 			if (g_clients[i].is_use) {
 				if (!CanSee(i, new_key))
 					continue;
 				g_clients[i].vlm.lock();
-				if(i != new_key)
+				if (i != new_key)
 					g_clients[i].viewlist.insert(new_key);
 				g_clients[i].vlm.unlock();
 				SendPacket(i, &p);
@@ -435,7 +472,8 @@ void AcceptThread()
 		}
 
 		//나에게 접속중인 다른 플레이어의 정보를 전송
-		for (int i = 0; i < MAX_USER; ++i) {
+		//(NPC, 플레이어 포함)
+		for (auto& i : g_zone[g_clients[new_key].zone_y][g_clients[new_key].zone_x]) {
 			if (g_clients[i].is_use) {
 				if (i == new_key)
 					continue;
@@ -450,22 +488,22 @@ void AcceptThread()
 				SendPacket(new_key, &p);
 			}
 		}
-		////주위에 있는 NPC의 정보를 알려줌 (여기부터 해야됨)
-		//for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
-		//	if (g_clients[i].is_use) {
-		//		if (i == new_key)
-		//			continue;
-		//		if (!CanSee(i, new_key))
-		//			continue;
-		//		p.id = i;
-		//		p.x = g_clients[i].x;
-		//		p.y = g_clients[i].y;
-		//		g_clients[new_key].vlm.lock();
-		//		g_clients[new_key].viewlist.insert(i);
-		//		g_clients[new_key].vlm.unlock();
-		//		SendPacket(new_key, &p);
-		//	}
-		//}
+
+		/*for (int i = 0; i < MAX_USER; ++i) {
+			if (g_clients[i].is_use) {
+				if (i == new_key)
+					continue;
+				if (!CanSee(i, new_key))
+					continue;
+				p.id = i;
+				p.x = g_clients[i].x;
+				p.y = g_clients[i].y;
+				g_clients[new_key].vlm.lock();
+				g_clients[new_key].viewlist.insert(i);
+				g_clients[new_key].vlm.unlock();
+				SendPacket(new_key, &p);
+			}
+		}*/
 	}
 }
 

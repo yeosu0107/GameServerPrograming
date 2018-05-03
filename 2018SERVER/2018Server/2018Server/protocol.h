@@ -7,7 +7,7 @@
 
 #define VIEW_RADIUS   3
 
-#define MAX_USER 10			//ID (0~9)
+#define MAX_USER 100		//ID (0~9)
 
 #define NPC_START  100		//NPC ID (100 ~ 200100)
 #define NUM_OF_NPC  200100		//유저 + NPC의 수
