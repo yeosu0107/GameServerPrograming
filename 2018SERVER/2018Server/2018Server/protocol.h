@@ -1,4 +1,4 @@
-
+#pragma once
 #define MAX_BUFF_SIZE   4000
 #define MAX_PACKET_SIZE  255
 
@@ -26,6 +26,8 @@
 #define SC_PUT_PLAYER    2
 #define SC_REMOVE_PLAYER 3
 #define SC_CHAT			4
+
+#define ZONE_INTERVAL 20
 
 #pragma pack (push, 1)
 
