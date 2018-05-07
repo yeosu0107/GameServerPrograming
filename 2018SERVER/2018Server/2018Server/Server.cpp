@@ -32,7 +32,12 @@ void Server::Initialize()
 		g_clients[i].zone_y = g_clients[i].y / ZONE_INTERVAL;
 
 		g_zone[g_clients[i].zone_y][g_clients[i].zone_x].insert(i);
+
+		//if (g_clients[i].zone_y == 0 && g_clients[i].zone_x == 0)
+		//	add_timer(i, 1);
 	}
+	
+	MoveNpc();
 
 	WSADATA	wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
@@ -48,12 +53,22 @@ bool Server::CanSee(int cl1, int cl2) {
 
 void Server::addViewList(unordered_set<int>& viewList, const int clientID, const int x, const int y) {
 	//해당 존에 있는 클라이언트들을 viewList에 인서트
-	for (auto& i : g_zone[y][x]) {
-		if (i == clientID) continue;
-		if (!g_clients[i].is_use) continue;
-
-		if (!CanSee(clientID, i)) continue;
-		viewList.insert(i);
+	if (clientID < NPC_START) {
+		for (auto& i : g_zone[y][x]) {
+			if (i == clientID) continue;
+			if (!g_clients[i].is_use) continue;
+			if (!CanSee(clientID, i)) continue;
+			viewList.insert(i);
+		}
+	}
+	else {
+		for (auto& i : g_zone[y][x]) {
+			if (i == clientID) continue;
+			if (i >= NPC_START) continue;
+			if (!g_clients[i].is_use) continue;
+			//if (!CanSee(clientID, i)) continue;
+			viewList.insert(i);
+		}
 	}
 }
 
@@ -76,8 +91,8 @@ void Server::SendPacket(int id, void* packet) {
 			err_display("Error in SendPacket : ", err_no);
 	}
 
-	cout << "SendPacket to Client [" << id << "] type ["
-		<< (int)p[1] << "] size [" << (int)p[0] << "]\n";
+	//cout << "SendPacket to Client [" << id << "] type ["
+	//	<< (int)p[1] << "] size [" << (int)p[0] << "]\n";
 }
 
 void Server::SendPutObject(int client, int object) {
@@ -116,6 +131,8 @@ void Server::DisconnectPlayer(int id) {
 	g_clients[id].vlm.unlock();
 
 	for (auto& i : vl_copy) {
+		if (i >= NPC_START)
+			continue;
 		g_clients[i].vlm.lock();
 		if (g_clients[i].is_use) {
 			if (g_clients[i].viewlist.count(id) != 0) {
@@ -170,10 +187,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		g_zone[g_clients[clientID].zone_y][g_clients[clientID].zone_x].insert(clientID);
 	}
 
-	//npc는 view리스트가 없고, sendPacket을 할 필요도 없다.
-	//그러므로 바로 리턴
-	if (clientID >= NPC_START)
-		return;
+	g_clients[clientID].type = 0;
 	sc_packet_pos posPacket;
 	posPacket.id = clientID;
 	posPacket.size = sizeof(sc_packet_pos);
@@ -182,7 +196,6 @@ void Server::ProcessPacket(int clientID, char* packet) {
 	posPacket.y = g_clients[clientID].y;
 
 	unordered_set<int> new_viewList;
-
 
 	//나와 같은존
 	addViewList(new_viewList, clientID, g_clients[clientID].zone_x, g_clients[clientID].zone_y);
@@ -225,76 +238,116 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		}
 	}
 
+	if (clientID < NPC_START) {
+		for (auto& id : new_viewList) {
+			//새로 viewlist에 들어오는 객체 처리
+			g_clients[clientID].vlm.lock();
+			if (g_clients[clientID].viewlist.count(id) == 0) {
+				g_clients[clientID].viewlist.insert(id);
+				g_clients[clientID].vlm.unlock();
+				SendPutObject(clientID, id);
 
-	for (auto& id : new_viewList) {
-		//새로 viewlist에 들어오는 객체 처리
-		g_clients[clientID].vlm.lock();
-		if (g_clients[clientID].viewlist.count(id) == 0) {
-			g_clients[clientID].viewlist.insert(id);
-			g_clients[clientID].vlm.unlock();
-			SendPutObject(clientID, id);
+				if (id >= NPC_START) {
+					/*if (g_clients[id].type == 0) {
+						g_clients[id].type = 1;
+						add_timer(id, 1);
+					}*/
+					continue;
+				}
 
-			if (id >= NPC_START)
-				continue;
-			g_clients[id].vlm.lock();
-			if (g_clients[id].viewlist.count(clientID) == 0) {
-				g_clients[id].viewlist.insert(clientID);
-				g_clients[id].vlm.unlock();
-				SendPutObject(id, clientID);
+				g_clients[id].vlm.lock();
+				if (g_clients[id].viewlist.count(clientID) == 0) {
+					g_clients[id].viewlist.insert(clientID);
+					g_clients[id].vlm.unlock();
+					SendPutObject(id, clientID);
+				}
+				else {
+					g_clients[id].vlm.unlock();
+					SendPacket(id, &posPacket);
+				}
 			}
 			else {
-				g_clients[id].vlm.unlock();
-				SendPacket(id, &posPacket);
+				g_clients[clientID].vlm.unlock();
+				//view에 계속 남아있는 객체 처리
+				if (id >= NPC_START) {
+					/*if (g_clients[id].type == 0) {
+						g_clients[id].type = 1;
+						add_timer(id, 1);
+					}*/
+					continue;
+				}
+				g_clients[id].vlm.lock();
+				if (g_clients[id].viewlist.count(clientID) == 0) {
+					g_clients[id].viewlist.insert(clientID);
+					g_clients[id].vlm.unlock();
+					SendPutObject(id, clientID);
+				}
+				else {
+					g_clients[id].vlm.unlock();
+					SendPacket(id, &posPacket);
+				}
 			}
 		}
-		else {
-			g_clients[clientID].vlm.unlock();
-			if (id >= NPC_START)
-				continue;
-			//view에 계속 남아있는 객체 처리
-			g_clients[id].vlm.lock();
-			if (g_clients[id].viewlist.count(clientID) == 0) {
-				g_clients[id].viewlist.insert(clientID);
-				g_clients[id].vlm.unlock();
-				SendPutObject(id, clientID);
-			}
-			else {
-				g_clients[id].vlm.unlock();
-				SendPacket(id, &posPacket);
-			}
-		}
-	}
-	//viewlist에서 나가는 객체 처리
-	vector<int> tmpDeleteList;
-	g_clients[clientID].vlm.lock();
-	unordered_set<int> old_vl = g_clients[clientID].viewlist;
-	g_clients[clientID].vlm.unlock();
-	for (auto& id : old_vl) {
-		if (0 == new_viewList.count(id)) {
-			tmpDeleteList.emplace_back(id);
-			if (id >= NPC_START)
-				continue;
-			g_clients[id].vlm.lock();
-			if (0 != g_clients[id].viewlist.count(clientID)) {
-				g_clients[id].viewlist.erase(clientID);
-				g_clients[id].vlm.unlock();
-				SendRemoveObject(id, clientID);
-			}
-			else
-				g_clients[id].vlm.unlock();
 
-		}
-	}
-
-
-	for (auto& delid : tmpDeleteList) {
+		//viewlist에서 나가는 객체 처리
+		vector<int> tmpDeleteList;
 		g_clients[clientID].vlm.lock();
-		g_clients[clientID].viewlist.erase(delid);
+		unordered_set<int> old_vl = g_clients[clientID].viewlist;
 		g_clients[clientID].vlm.unlock();
-		SendRemoveObject(clientID, delid);
-	}
+		for (auto& id : old_vl) {
+			if (0 == new_viewList.count(id)) {
+				tmpDeleteList.emplace_back(id);
+				if (id >= NPC_START)
+					continue;
+				g_clients[id].vlm.lock();
+				if (0 != g_clients[id].viewlist.count(clientID)) {
+					g_clients[id].viewlist.erase(clientID);
+					g_clients[id].vlm.unlock();
+					SendRemoveObject(id, clientID);
+				}
+				else
+					g_clients[id].vlm.unlock();
 
-	SendPacket(clientID, &posPacket);
+			}
+		}
+
+
+		for (auto& delid : tmpDeleteList) {
+			g_clients[clientID].vlm.lock();
+			g_clients[clientID].viewlist.erase(delid);
+			g_clients[clientID].vlm.unlock();
+			SendRemoveObject(clientID, delid);
+		}
+
+		SendPacket(clientID, &posPacket);
+	}
+	else {
+		//npc의 경우 플레이어만 뷰리스트에 탑재 & 패킷전송
+		for (auto& id : new_viewList) {
+			if (CanSee(clientID, id)) {
+				g_clients[id].vlm.lock();
+				if (g_clients[id].viewlist.count(clientID) == 0) {
+					g_clients[id].viewlist.insert(clientID);
+					g_clients[id].vlm.unlock();
+					SendPutObject(id, clientID);
+				}
+				else {
+					g_clients[id].vlm.unlock();
+					SendPacket(id, &posPacket);
+				}
+			}
+			else {
+				if (g_clients[id].viewlist.count(clientID) != 0) {
+					g_clients[id].vlm.lock();
+					g_clients[id].viewlist.erase(clientID);
+					g_clients[id].vlm.unlock();
+					SendRemoveObject(id, clientID);
+				}
+			}
+		}
+
+		//add_timer(clientID, 1);
+	}
 }
 
 void Server::AcceptNewClient(SOCKET& g_socket)
@@ -354,12 +407,12 @@ void Server::AcceptNewClient(SOCKET& g_socket)
 	g_clients[new_key].zone_y = p.y / ZONE_INTERVAL;
 
 	g_zone[g_clients[new_key].zone_y][g_clients[new_key].zone_x].insert(new_key);
-
 	//나의 접속을 다른 플레이어에게 알림 (나를 포함)
 	//같은 존에 있는 플레이어에만 알림
 	for (auto& i : g_zone[g_clients[new_key].zone_y][g_clients[new_key].zone_x]) {
-		if (i >= MAX_USER) //user가 아니면 무시
+		if (i >= MAX_USER) {//user가 아니면 무시
 			continue;
+		}
 		if (g_clients[i].is_use) {
 			if (!Server::getInstance()->CanSee(i, new_key))
 				continue;
@@ -390,6 +443,36 @@ void Server::AcceptNewClient(SOCKET& g_socket)
 	}
 }
 
+void Server::add_timer(int id, int type, float time)
+{
+	Event now;
+	now.id = id;
+	now.time = time;
+	now.startClock = chrono::system_clock::now();
+	now.type = type;
+
+	tmp.lock();
+	event_queue.push(now);
+	tmp.unlock();
+}
+
+void Server::MoveNpc()
+{
+	for (int i = 0; i < MAX_USER; ++i) {
+		if (!g_clients[i].is_use) continue;
+		for (auto& p : g_clients[i].viewlist) {
+			if (p < MAX_USER)
+				continue;
+			if (g_clients[p].type == 0) {
+				g_clients[p].type = 1;
+				add_timer(p, MOVE_TYPE, 1);
+			}
+			
+		}
+	}
+	add_timer(NUM_OF_NPC+1, RESERVE_TYPE, 1);
+}
+
 Client * Server::getClient(int id)
 {
 	return &g_clients[id];
@@ -415,7 +498,7 @@ void Server::recv(unsigned long long& key, unsigned long& data_size, EXOver* exo
 			memcpy(g_clients[key].prev_packet + g_clients[key].prev_size,
 				ptr, remain);
 			//패킷 처리
-			Server::getInstance()->ProcessPacket(static_cast<int>(key), g_clients[key].prev_packet);
+			ProcessPacket(static_cast<int>(key), g_clients[key].prev_packet);
 			recv_size -= remain;
 			ptr += remain;
 			g_clients[key].packet_size = 0;
@@ -431,14 +514,16 @@ void Server::recv(unsigned long long& key, unsigned long& data_size, EXOver* exo
 		}
 	}
 
-	unsigned long rflag = 0;
-	ZeroMemory(&exover->wsaover, sizeof(WSAOVERLAPPED));
-	int ret = WSARecv(g_clients[key].s, &exover->wsabuf, 1, NULL,
-		&rflag, &exover->wsaover, NULL);
+	if (key < NPC_START) {
+		unsigned long rflag = 0;
+		ZeroMemory(&exover->wsaover, sizeof(WSAOVERLAPPED));
+		int ret = WSARecv(g_clients[key].s, &exover->wsabuf, 1, NULL,
+			&rflag, &exover->wsaover, NULL);
 
-	if (ret != 0) {
-		int err_no = WSAGetLastError();
-		if (err_no != WSA_IO_PENDING)
-			err_display("Recv in WorkThread", err_no);
+		if (ret != 0) {
+			int err_no = WSAGetLastError();
+			if (err_no != WSA_IO_PENDING)
+				err_display("Recv in WorkThread", err_no);
+		}
 	}
 }

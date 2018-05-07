@@ -47,7 +47,7 @@ char buffer[80];                // used to print text
 
 // demo globals
 BOB			player;				// 플레이어 Unit
-BOB			tree[13*13];
+BOB			tree[50*50];
 BOB			npc[NUM_OF_NPC];      // NPC Unit
 BOB         skelaton[MAX_USER];     // the other player skelaton
 
@@ -403,8 +403,8 @@ white_tile.width = TILE_WIDTH;
 	Load_Frame_BOB32(&player,UNIT_TEXTURE,0,2,0,BITMAP_EXTRACT_MODE_CELL);
 
 	int index = 0;
-	for (int i = 0; i < 13; ++i) {
-		for (int j = 0; j < 13; ++j) {
+	for (int i = 0; i < 50; ++i) {
+		for (int j = 0; j < 50; ++j) {
 			if (!Create_BOB32(&tree[index], 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
 			Load_Frame_BOB32(&tree[index], UINT_TREE_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
 
@@ -561,7 +561,7 @@ DD_Fill_Surface(D3DCOLOR_ARGB(255,0,0,0));
 	for (int i=NPC_START;i<NUM_OF_NPC;++i) Draw_BOB32(&npc[i]);
 
 	//draw trees
-	for (int i = 0; i < 13*13; ++i) Draw_BOB32(&tree[i]);
+	for (int i = 0; i < 50*50; ++i) Draw_BOB32(&tree[i]);
 
 	// draw some text
 	wchar_t text[300];

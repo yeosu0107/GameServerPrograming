@@ -1,7 +1,7 @@
-#include <thread>
-
 #include "stdafx.h"
 #include "Server.h"
+#include <thread>
+#include <queue>
 
 void WorkerThread()
 {
@@ -10,10 +10,9 @@ void WorkerThread()
 		unsigned long long	key;
 		WSAOVERLAPPED*	p_over=nullptr;
 
-		//BOOL is_success = Server::getInstance()->GCCS(data_size, key, p_over);
 		BOOL is_success = GetQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 			&data_size, &key, &p_over, INFINITE);
-		cout << "GQCS from client [" << key << "] with size [" << data_size << "]\n";
+		//cout << "GQCS from client [" << key << "] with size [" << data_size << "]\n";
 
 		// 俊矾 贸府
 		if (is_success == FALSE) {
@@ -26,7 +25,7 @@ void WorkerThread()
 			Server::getInstance()->DisconnectPlayer(key);
 			continue;
 		}
-		//Client* nowClient = Server::getInstance()->getClient(key)
+
 		// Send / Recv 贸府
 		EXOver* exover = reinterpret_cast<EXOver*>(p_over);
 		if (exover->is_recv == true) {
@@ -58,6 +57,42 @@ void AcceptThread()
 	}
 }
 
+void TimerThread() {
+	auto event_queue = Server::getInstance()->getEventQueue();
+	while (true) {
+		if (event_queue->empty())
+			continue;
+		Event nowEvent = event_queue->top();
+		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent.startClock;
+		if (duration.count() > nowEvent.time) {
+			if (nowEvent.type == MOVE_TYPE) {
+				cs_packet_up move_packet;
+
+				move_packet.type = rand() % 4 + 1;;
+				move_packet.size = sizeof(move_packet);
+
+				EXOver* over = new EXOver();
+				over->is_recv = true;
+				over->io_buf[0] = move_packet.size;
+				over->io_buf[1] = move_packet.type;
+
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					over->io_buf[0], nowEvent.id, &over->wsaover);
+				Server::getInstance()->getMutex()->lock();
+				event_queue->pop();
+				Server::getInstance()->getMutex()->unlock();
+			}
+			else if (nowEvent.type == RESERVE_TYPE) {
+				Server::getInstance()->MoveNpc();
+
+				Server::getInstance()->getMutex()->lock();
+				event_queue->pop();
+				Server::getInstance()->getMutex()->unlock();
+			}
+		}
+	}
+}
+
 int main(void)
 {	
 	vector<thread> all_threads;
@@ -66,6 +101,7 @@ int main(void)
 		all_threads.push_back(thread(WorkerThread));
 	}
 	all_threads.push_back(thread(AcceptThread));
+	all_threads.push_back(thread(TimerThread));
 
 	for (auto& th : all_threads) {
 		th.join();

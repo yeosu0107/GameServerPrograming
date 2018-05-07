@@ -10,6 +10,7 @@ class Object {
 public:
 	SOCKET s;
 	bool is_use = false;
+	int type = 0;
 	int x, y;
 
 	int zone_x, zone_y;

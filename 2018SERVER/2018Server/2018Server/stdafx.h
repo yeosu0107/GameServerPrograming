@@ -6,6 +6,7 @@
 #include <windowsx.h>
 #include <iostream>
 #include <WinSock2.h>
+#include <chrono>
 
 #include "protocol.h"
 #include "Client.h"
