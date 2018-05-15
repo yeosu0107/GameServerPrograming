@@ -5,7 +5,7 @@
 #define BOARD_WIDTH   400
 #define BOARD_HEIGHT  400
 
-#define VIEW_RADIUS   3
+#define VIEW_RADIUS   7
 
 #define MAX_USER 100		//ID (0~9)
 

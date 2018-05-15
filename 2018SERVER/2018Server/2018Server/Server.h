@@ -15,10 +15,16 @@ struct Event {
 	float time;
 	int type;
 	chrono::system_clock::time_point startClock;
+
+	int target;
 };
 
 struct compare {
-	bool operator()(Event t1, Event t2) {
+private:
+	bool reserve;
+public:
+	compare() { }
+	bool operator()(const Event t1, const Event t2) const{
 		return t1.startClock > t2.startClock;
 	}
 };
@@ -35,8 +41,10 @@ private:
 	priority_queue<Event, vector<Event>, compare> event_queue;
 	mutex tmp;
 
-	vector<Client> g_clients;
+	vector<Object*> g_clients;
 	unordered_set<int> g_zone[ZONE_INTERVAL][ZONE_INTERVAL];
+
+	bool isNPC(int index);
 public:
 	~Server();
 	static Server* getInstance();
@@ -55,9 +63,10 @@ public:
 	void AcceptNewClient(SOCKET& g_socket);
 
 	void add_timer(int id, int type, float time);
-	void MoveNpc();
+	void MoveNpc(int id);
+	void WakeUpNPC(int id);
 
-	Client* getClient(int id);
+	Object* getClient(int id);
 	HANDLE* getIOCP();
 	priority_queue<Event, vector<Event>, compare>* getEventQueue(){ return &event_queue; }
 	mutex* getMutex() { return &tmp; }

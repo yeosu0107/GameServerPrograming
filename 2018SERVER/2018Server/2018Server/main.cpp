@@ -21,18 +21,24 @@ void WorkerThread()
 			continue;
 		}
 		// 立加 辆丰 贸府
-		if (data_size == 0) {
+		if (data_size == 0 && key < NPC_START) {
 			Server::getInstance()->DisconnectPlayer(key);
 			continue;
 		}
 
 		// Send / Recv 贸府
 		EXOver* exover = reinterpret_cast<EXOver*>(p_over);
-		if (exover->is_recv == true) {
+		if (exover->event_type == EV_RECV) {
 			Server::getInstance()->recv(key, data_size, exover);
 		}
-		else {
+		else if (exover->event_type == EV_MOVE) {
+			Server::getInstance()->MoveNpc((int)key);
+		}
+		else if(exover->event_type==EV_SEND) {
 			delete exover;
+		}
+		else {
+			cout << "Unknown Event Error in Worker Thread\n";
 		}
 	}
 }
@@ -66,28 +72,16 @@ void TimerThread() {
 		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent.startClock;
 		if (duration.count() > nowEvent.time) {
 			if (nowEvent.type == MOVE_TYPE) {
-				cs_packet_up move_packet;
-
-				move_packet.type = rand() % 4 + 1;;
-				move_packet.size = sizeof(move_packet);
+				Server::getInstance()->getMutex()->lock();
+				event_queue->pop();
+				Server::getInstance()->getMutex()->unlock();
 
 				EXOver* over = new EXOver();
-				over->is_recv = true;
-				over->io_buf[0] = move_packet.size;
-				over->io_buf[1] = move_packet.type;
+				over->event_type = EV_MOVE;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
-					over->io_buf[0], nowEvent.id, &over->wsaover);
-				Server::getInstance()->getMutex()->lock();
-				event_queue->pop();
-				Server::getInstance()->getMutex()->unlock();
-			}
-			else if (nowEvent.type == RESERVE_TYPE) {
-				Server::getInstance()->MoveNpc();
-
-				Server::getInstance()->getMutex()->lock();
-				event_queue->pop();
-				Server::getInstance()->getMutex()->unlock();
+					0, nowEvent.id, &over->wsaover);
+				
 			}
 		}
 	}
