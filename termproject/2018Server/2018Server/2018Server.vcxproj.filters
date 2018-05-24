@@ -19,6 +19,9 @@
     <Filter Include="Server">
       <UniqueIdentifier>{18307fa7-e9b1-485d-83b0-3fb35f1942d5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DB">
+      <UniqueIdentifier>{73044e46-5bab-48ce-bdb8-471396e8485e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -33,6 +36,9 @@
     <ClCompile Include="Server.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="DBConnect.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="protocol.h">
@@ -46,6 +52,9 @@
     </ClInclude>
     <ClInclude Include="Server.h">
       <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="DBConnect.h">
+      <Filter>DB</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

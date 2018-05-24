@@ -86,6 +86,7 @@ void SpecialKeyInput(int key, int x, int y)
 
 int main(int argc, char **argv)
 {
+	server = new ServerConnect();
 	// Initialize GL things
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
@@ -104,7 +105,7 @@ int main(int argc, char **argv)
 	}
 	scene = new SceneMgr();
 	scene->BuildObjects();
-	server = new ServerConnect();
+	
 	
 
 	glutDisplayFunc(RenderScene);

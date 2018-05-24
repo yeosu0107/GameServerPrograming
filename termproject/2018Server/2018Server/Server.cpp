@@ -327,7 +327,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 
 }
 
-void Server::AcceptNewClient(SOCKET& g_socket)
+void Server::AcceptAndSearchClient(SOCKET & g_socket)
 {
 	SOCKADDR_IN c_addr;
 	ZeroMemory(&c_addr, sizeof(SOCKADDR_IN));
@@ -339,6 +339,7 @@ void Server::AcceptNewClient(SOCKET& g_socket)
 	auto new_socket = WSAAccept(g_socket, reinterpret_cast<SOCKADDR*>(&c_addr),
 		&c_addr_len, NULL, NULL);
 	cout << "new Client Accepted!\n";
+
 	int new_key = -1;
 
 	for (int i = 0; i < MAX_USER; ++i) {
@@ -360,14 +361,88 @@ void Server::AcceptNewClient(SOCKET& g_socket)
 	newClient->y = 10;
 	ZeroMemory(&newClient->exover.wsaover, sizeof(WSAOVERLAPPED));
 
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(new_socket),
+	newClient->is_use = true;
+	newClient->viewlist.clear();
+
+	DWORD iobyte, ioflag = 0;
+	DWORD in_packet_size = 0;
+	int saved_packet_size = 0;
+	WSABUF recv_wsabuf;
+	char	recv_buffer[1024];
+	char	packet_buffer[1024];
+
+	recv_wsabuf.buf = recv_buffer;
+	recv_wsabuf.len = 1024;
+
+	int ret = WSARecv(new_socket, &recv_wsabuf, 1, &iobyte, &ioflag, NULL, NULL);
+
+	if (ret) {
+		int err_code = WSAGetLastError();
+		printf("Recv Error [%d]\n", err_code);
+		closesocket(new_socket);
+		newClient->is_use = false;
+		return;
+	}
+	/*BYTE ptr[2] = { 0,1 };
+	SearchClientID(ptr, newClient, new_key);*/
+	BYTE *ptr = reinterpret_cast<BYTE *>(recv_buffer);
+	while (0 != iobyte) {
+		if (0 == in_packet_size) in_packet_size = ptr[0];
+		if (iobyte + saved_packet_size >= in_packet_size) {
+			memcpy(packet_buffer + saved_packet_size, ptr, in_packet_size - saved_packet_size);
+			
+			SearchClientID(ptr, newClient, new_key);
+			return;
+		}
+		else {
+			memcpy(packet_buffer + saved_packet_size, ptr, iobyte);
+			saved_packet_size += iobyte;
+			iobyte = 0;
+		}
+	}
+}
+
+void Server::AcceptNewClient(Client* client, int new_key)
+{
+	/*SOCKADDR_IN c_addr;
+	ZeroMemory(&c_addr, sizeof(SOCKADDR_IN));
+	c_addr.sin_family = AF_INET;
+	c_addr.sin_port = htons(MY_SERVER_PORT);
+	c_addr.sin_addr.s_addr = INADDR_ANY;
+	int c_addr_len = sizeof(SOCKADDR_IN);
+
+	auto new_socket = WSAAccept(g_socket, reinterpret_cast<SOCKADDR*>(&c_addr),
+		&c_addr_len, NULL, NULL);
+	cout << "new Client Accepted!\n";*/
+	/*int new_key = -1;
+
+	for (int i = 0; i < MAX_USER; ++i) {
+		Client* now = reinterpret_cast<Client*>(g_clients[i]);
+		if (!now->is_use) {
+			new_key = i;
+			break;
+		}
+	}
+	if (new_key == -1) {
+		cout << "MAX USER EXCEEDED!!\n";
+		return;
+	}
+	cout << "New Client's ID : " << new_key << endl;
+	Client* newClient = reinterpret_cast<Client*>(g_clients[new_key]);
+
+	newClient->s = new_socket;
+	newClient->x = 10;
+	newClient->y = 10;
+	ZeroMemory(&newClient->exover.wsaover, sizeof(WSAOVERLAPPED));*/
+	Client* newClient = reinterpret_cast<Client*>(client);
+	CreateIoCompletionPort(reinterpret_cast<HANDLE>(newClient->s),
 		g_iocp, new_key, 0);
 
-	newClient->viewlist.clear();
-	newClient->is_use = true;
+	//newClient->viewlist.clear();
+	//newClient->is_use = true;
 
 	unsigned long flag = 0;
-	int ret = WSARecv(new_socket, &newClient->exover.wsabuf, 1, NULL, &flag,
+	int ret = WSARecv(newClient->s, &newClient->exover.wsabuf, 1, NULL, &flag,
 		&newClient->exover.wsaover, NULL);
 
 	if (ret != 0) {
@@ -423,13 +498,20 @@ void Server::AcceptNewClient(SOCKET& g_socket)
 	}
 }
 
+void Server::SearchClientID(BYTE* id, Client* client, int index)
+{
+	int cID = id[1];
+	DBEvent newEvent = DBEvent(SEARCH_ID, cID, client, index);
+	db_queue.push(newEvent);
+}
+
 void Server::add_timer(int id, int type, float time)
 {
-	Event now;
-	now.id = id;
-	now.time = time;
-	now.startClock = chrono::system_clock::now();
-	now.type = type;
+	Event* now = new Event();
+	now->id = id;
+	now->time = time;
+	now->startClock = chrono::system_clock::now();
+	now->type = type;
 
 	tmp.lock();
 	event_queue.push(now);

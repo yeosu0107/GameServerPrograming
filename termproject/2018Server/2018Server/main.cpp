@@ -1,7 +1,10 @@
 #include "stdafx.h"
 #include "Server.h"
+#include "DBConnect.h"
 #include <thread>
 #include <queue>
+
+DBConnect DBprocess;
 
 void WorkerThread()
 {
@@ -59,7 +62,7 @@ void AcceptThread()
 	listen(g_socket, 1000);
 
 	while (true) {
-		Server::getInstance()->AcceptNewClient(g_socket);
+		Server::getInstance()->AcceptAndSearchClient(g_socket);
 	}
 }
 
@@ -68,11 +71,12 @@ void TimerThread() {
 	while (true) {
 		if (event_queue->empty())
 			continue;
-		Event nowEvent = event_queue->top();
-		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent.startClock;
-		if (duration.count() > nowEvent.time) {
-			if (nowEvent.type == MOVE_TYPE) {
-				Server::getInstance()->getMutex()->lock();
+		Server::getInstance()->getMutex()->lock();
+		Event* nowEvent = event_queue->top();
+		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent->startClock;
+		if (duration.count() > nowEvent->time) {
+			if (nowEvent->type == MOVE_TYPE) {
+				
 				event_queue->pop();
 				Server::getInstance()->getMutex()->unlock();
 
@@ -80,10 +84,35 @@ void TimerThread() {
 				over->event_type = EV_MOVE;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
-					0, nowEvent.id, &over->wsaover);
+					0, nowEvent->id, &over->wsaover);
+				//delete nowEvent;
 				
 			}
 		}
+		else
+			Server::getInstance()->getMutex()->unlock();
+	}
+}
+
+void DBThread() {
+	auto db_queue = Server::getInstance()->getDB();
+	while (true) {
+		if (db_queue->empty())
+			continue;
+		DBEvent* nowEvent = &db_queue->front();
+		if (nowEvent->type == UPDATE_POS) {
+			DBprocess.UpdateUserPos(nowEvent->id, nowEvent->client->x, nowEvent->client->y);
+		}
+		else if (nowEvent->type == SEARCH_ID) {
+			bool ret = DBprocess.SearchUserAndLogin(nowEvent->id, nowEvent->client->x, nowEvent->client->y);
+			if (ret) {
+				Server::getInstance()->AcceptNewClient(nowEvent->client, nowEvent->clientIndex);
+			}
+			else {
+				cout << "Unknown ID" << endl;
+			}	
+		}
+		db_queue->pop();
 	}
 }
 
@@ -91,12 +120,13 @@ int main(void)
 {	
 	vector<thread> all_threads;
 	Server::getInstance()->Initialize();
+	
 	for (int i = 0; i < 4; ++i) {
 		all_threads.push_back(thread(WorkerThread));
 	}
 	all_threads.push_back(thread(AcceptThread));
 	all_threads.push_back(thread(TimerThread));
-
+	all_threads.push_back(thread(DBThread));
 	for (auto& th : all_threads) {
 		th.join();
 	}

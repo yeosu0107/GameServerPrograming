@@ -3,6 +3,7 @@
 #include <queue>
 #include "protocol.h"
 #include "Client.h"
+#include "DBConnect.h"
 
 using namespace std;
 
@@ -19,13 +20,27 @@ struct Event {
 	int target;
 };
 
+struct DBEvent {
+	int type;
+	int id;
+	Client* client;
+	int clientIndex;
+
+	DBEvent(int type, int id, Client* cl, int index) {
+		this->type = type;
+		this->id = id;
+		this->client = cl;
+		this->clientIndex = index;
+	}
+};
+
 struct compare {
 private:
 	bool reserve;
 public:
 	compare() { }
-	bool operator()(const Event t1, const Event t2) const{
-		return t1.startClock > t2.startClock;
+	bool operator()(const Event* t1, const Event* t2) const{
+		return t1->startClock > t2->startClock;
 	}
 };
 
@@ -38,7 +53,8 @@ private:
 
 	HANDLE		g_iocp;
 
-	priority_queue<Event, vector<Event>, compare> event_queue;
+	priority_queue<Event*, vector<Event*>, compare> event_queue;
+	queue<DBEvent> db_queue;
 	mutex tmp;
 
 	vector<Object*> g_clients;
@@ -60,7 +76,9 @@ public:
 	void DisconnectPlayer(int id);
 	void ProcessPacket(int clientID, char* packet);
 
-	void AcceptNewClient(SOCKET& g_socket);
+	void AcceptAndSearchClient(SOCKET& g_socket);
+	void AcceptNewClient(Client* client, int key);
+	void SearchClientID(BYTE* id, Client* client, int index);
 
 	void add_timer(int id, int type, float time);
 	void MoveNpc(int id);
@@ -68,7 +86,8 @@ public:
 
 	Object* getClient(int id);
 	HANDLE* getIOCP();
-	priority_queue<Event, vector<Event>, compare>* getEventQueue(){ return &event_queue; }
+	priority_queue<Event*, vector<Event*>, compare>* getEventQueue(){ return &event_queue; }
+	queue<DBEvent>* getDB() { return&db_queue; }
 	mutex* getMutex() { return &tmp; }
 	void recv(unsigned long long& key, unsigned long& data_size, EXOver* exover);
 };

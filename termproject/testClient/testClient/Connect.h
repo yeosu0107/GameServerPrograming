@@ -25,4 +25,5 @@ public:
 	void ProcessPacket(char* ptr);
 	void ReadPacket();
 	void SendPacket(int x, int y);
+	int InputID();
 };

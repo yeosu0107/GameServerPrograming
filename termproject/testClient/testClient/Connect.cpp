@@ -21,6 +21,8 @@ void error_quit(char* msg)
 
 ServerConnect::ServerConnect()
 {
+	int id = InputID();
+
 	if (WSAStartup(MAKEWORD(2, 2), &m_wsa) != 0)
 		return;
 
@@ -40,6 +42,13 @@ ServerConnect::ServerConnect()
 	send_wsabuf.len = BUF_SIZE;
 	recv_wsabuf.buf = recv_buffer;
 	recv_wsabuf.len = BUF_SIZE;
+
+	cs_packet_up *my_packet = reinterpret_cast<cs_packet_up *>(send_buffer);
+	my_packet->size = sizeof(my_packet);
+	send_wsabuf.len = sizeof(my_packet);
+	DWORD iobyte;
+	my_packet->type = id;
+	WSASend(m_socket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 }
 
 ServerConnect::~ServerConnect()
@@ -71,6 +80,8 @@ void ServerConnect::ProcessPacket(char * ptr)
 			g_myid = id;
 		}
 		if (id == g_myid) {
+			*g_left_x = my_packet->x - 10;
+			*g_top_y = my_packet->y - 10;
 			player->setPos(x, y, 0);
 			player->setLive(true);
 		}
@@ -193,4 +204,13 @@ void ServerConnect::SendPacket(int x, int y)
 		else my_packet->type = CS_UP;
 		WSASend(m_socket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 	}
+}
+
+int ServerConnect::InputID()
+{
+	int id;
+	cout << "ID¸¦ ÀÔ·Â : ";
+	cin >> id;
+	return id;
+	
 }
