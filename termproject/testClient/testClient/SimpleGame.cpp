@@ -23,14 +23,17 @@ bool g_LButtonDown = false;
 
 DWORD prevTime = timeGetTime();
 
+
 void RenderScene(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 	glClearDepth(1.0f);
+
 	DWORD currTime = timeGetTime();
 	float time = (currTime - prevTime)*0.001f;
 	prevTime = currTime;
+
 	scene->Update(time);
 	scene->Render();
 	glutSwapBuffers();
@@ -64,9 +67,16 @@ void KeyInput(unsigned char key, int x, int y)
 
 }
 
+DWORD prevInputTime;
+float inputInterval = 1.0f;
+
 void SpecialKeyInput(int key, int x, int y)
 {
 	int tx = 0, ty = 0;
+	float time = (timeGetTime() - prevInputTime)*0.001f;
+	if (time < inputInterval)
+		return;
+	prevInputTime = timeGetTime();
 	switch (key) {
 	case GLUT_KEY_LEFT:
 		tx = -1;
@@ -92,7 +102,7 @@ int main(int argc, char **argv)
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(WindowWidth, WindowHeight);
-	glutCreateWindow("Game Software Engineering KPU");
+	glutCreateWindow("testClient");
 
 	glewInit();
 	if (glewIsSupported("GL_VERSION_3_0"))
@@ -106,8 +116,6 @@ int main(int argc, char **argv)
 	scene = new SceneMgr();
 	scene->BuildObjects();
 	
-	
-
 	glutDisplayFunc(RenderScene);
 	glutIdleFunc(Idle);
 	glutKeyboardFunc(KeyInput);
@@ -119,4 +127,3 @@ int main(int argc, char **argv)
 	delete scene;
     return 0;
 }
-

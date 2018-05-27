@@ -48,12 +48,13 @@ void Server::Initialize()
 		g_clients.emplace_back(now);
 	}
 	
-	//MoveNpc();
 
 	WSADATA	wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
 
 	g_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);
+
+	UploadUserDatatoDB();
 }
 
 bool Server::CanSee(int cl1, int cl2) {
@@ -85,6 +86,49 @@ void Server::addViewList(unordered_set<int>& viewList, const int clientID, const
 			viewList.insert(i);
 		}
 	}
+}
+
+unordered_set<int> Server::ProcessNearZone(int key)
+{
+	unordered_set<int> new_viewList;
+	//같은존
+	addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y);
+	UINT x_interval = g_clients[key]->x % ZONE_INTERVAL;
+	UINT y_interval = g_clients[key]->y % ZONE_INTERVAL;
+
+	//인접 존 처리
+	if (x_interval < 7 && y_interval < 7) {
+		if (g_clients[key]->zone_y > 0 && g_clients[key]->zone_x > 0) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y - 1);
+		}
+	}
+	else if (x_interval > 13 && y_interval > 13) {
+		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1 && g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y + 1);
+		}
+	}
+	if (x_interval < 7) {
+		if (g_clients[key]->zone_x > 0) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y);
+		}
+	}
+	else if (x_interval > 13) {
+		if (g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y);
+		}
+	}
+	if (y_interval < 7) {
+		if (g_clients[key]->zone_y > 0) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y - 1);
+		}
+	}
+	else if (y_interval > 13) {
+		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1) {
+			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y + 1);
+		}
+	}
+
+	return new_viewList;
 }
 
 void Server::SendPacket(int id, void* packet) {
@@ -133,6 +177,9 @@ void Server::DisconnectPlayer(int id) {
 	closesocket(now->s);
 
 	cout << "Client [" << id << "] DisConnected\n";
+
+	DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
+	db_queue.push(newEvent);
 
 	sc_packet_remove_player p;
 	p.id = id;
@@ -209,45 +256,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 	posPacket.x = client->x;
 	posPacket.y = client->y;
 
-	unordered_set<int> new_viewList;
-
-	//나와 같은존
-	addViewList(new_viewList, clientID, client->zone_x, client->zone_y);
-	UINT x_interval = client->x % ZONE_INTERVAL;
-	UINT y_interval = client->y % ZONE_INTERVAL;
-
-	//내 인접 존 처리
-	if (x_interval < 7 && y_interval < 7) {
-		if (client->zone_y > 0 && client->zone_x > 0) {
-			addViewList(new_viewList, clientID, client->zone_x - 1, client->zone_y - 1);
-		}
-	}
-	else if (x_interval > 13 && y_interval > 13) {
-		if (client->zone_y < ZONE_INTERVAL - 1 && client->zone_x < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, clientID, client->zone_x + 1, client->zone_y + 1);
-		}
-	}
-	if (x_interval < 7) {
-		if (client->zone_x > 0) {
-			addViewList(new_viewList, clientID, client->zone_x - 1, client->zone_y);
-		}
-	}
-	else if (x_interval > 13) {
-		if (client->zone_x < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, clientID, client->zone_x + 1, client->zone_y);
-		}
-	}
-	if (y_interval < 7) {
-		if (client->zone_y > 0) {
-			addViewList(new_viewList, clientID, client->zone_x, client->zone_y - 1);
-		}
-	}
-	else if (y_interval > 13) {
-		if (client->zone_y < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, clientID, client->zone_x, client->zone_y + 1);
-		}
-	}
-
+	unordered_set<int> new_viewList = ProcessNearZone(clientID);
 
 	for (auto& id : new_viewList) {
 		//새로 viewlist에 들어오는 객체 처리
@@ -404,36 +413,6 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 
 void Server::AcceptNewClient(Client* client, int new_key)
 {
-	/*SOCKADDR_IN c_addr;
-	ZeroMemory(&c_addr, sizeof(SOCKADDR_IN));
-	c_addr.sin_family = AF_INET;
-	c_addr.sin_port = htons(MY_SERVER_PORT);
-	c_addr.sin_addr.s_addr = INADDR_ANY;
-	int c_addr_len = sizeof(SOCKADDR_IN);
-
-	auto new_socket = WSAAccept(g_socket, reinterpret_cast<SOCKADDR*>(&c_addr),
-		&c_addr_len, NULL, NULL);
-	cout << "new Client Accepted!\n";*/
-	/*int new_key = -1;
-
-	for (int i = 0; i < MAX_USER; ++i) {
-		Client* now = reinterpret_cast<Client*>(g_clients[i]);
-		if (!now->is_use) {
-			new_key = i;
-			break;
-		}
-	}
-	if (new_key == -1) {
-		cout << "MAX USER EXCEEDED!!\n";
-		return;
-	}
-	cout << "New Client's ID : " << new_key << endl;
-	Client* newClient = reinterpret_cast<Client*>(g_clients[new_key]);
-
-	newClient->s = new_socket;
-	newClient->x = 10;
-	newClient->y = 10;
-	ZeroMemory(&newClient->exover.wsaover, sizeof(WSAOVERLAPPED));*/
 	Client* newClient = reinterpret_cast<Client*>(client);
 	CreateIoCompletionPort(reinterpret_cast<HANDLE>(newClient->s),
 		g_iocp, new_key, 0);
@@ -462,8 +441,9 @@ void Server::AcceptNewClient(Client* client, int new_key)
 	newClient->zone_y = p.y / ZONE_INTERVAL;
 
 	g_zone[newClient->zone_y][newClient->zone_x].insert(new_key);
+	unordered_set<int> nearList = ProcessNearZone(new_key);
 	//나의 접속을 다른 플레이어에게 알림 (나를 포함)
-	//같은 존에 있는 플레이어에만 알림
+	//같은 존 & 인접 존에 있는 플레이어에만 알림
 	for (auto& i : g_zone[newClient->zone_y][newClient->zone_x]) {
 		if (isNPC(i)) continue;
 		Client* other = reinterpret_cast<Client*>(g_clients[i]);
@@ -480,7 +460,8 @@ void Server::AcceptNewClient(Client* client, int new_key)
 
 	//나에게 접속중인 다른 플레이어의 정보를 전송
 	//(NPC, 플레이어 포함)
-	for (auto& i : g_zone[newClient->zone_y][newClient->zone_x]) {
+	
+	for (auto& i : nearList) {
 		if (g_clients[i]->is_use) {
 			if (i == new_key)
 				continue;
@@ -551,43 +532,8 @@ void Server::MoveNpc(int key)
 	posPacket.x = g_clients[key]->x;
 	posPacket.y = g_clients[key]->y;
 
-	unordered_set<int> new_viewList;
-	//같은존
-	addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y);
-	UINT x_interval = g_clients[key]->x % ZONE_INTERVAL;
-	UINT y_interval = g_clients[key]->y % ZONE_INTERVAL;
-
-	//인접 존 처리
-	if (x_interval < 7 && y_interval < 7) {
-		if (g_clients[key]->zone_y > 0 && g_clients[key]->zone_x > 0) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y - 1);
-		}
-	}
-	else if (x_interval > 13 && y_interval > 13) {
-		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1 && g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y + 1);
-		}
-	}
-	if (x_interval < 7) {
-		if (g_clients[key]->zone_x > 0) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y);
-		}
-	}
-	else if (x_interval > 13) {
-		if (g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y);
-		}
-	}
-	if (y_interval < 7) {
-		if (g_clients[key]->zone_y > 0) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y - 1);
-		}
-	}
-	else if (y_interval > 13) {
-		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1) {
-			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y + 1);
-		}
-	}
+	unordered_set<int> new_viewList = ProcessNearZone(key);
+	
 	for (auto& id : new_viewList) {
 		Client* target = reinterpret_cast<Client*>(g_clients[id]);
 		if (CanSee(key, id)) {
@@ -689,4 +635,17 @@ void Server::recv(unsigned long long& key, unsigned long& data_size, EXOver* exo
 	else {
 		ProcessPacket(static_cast<int>(key), exover->io_buf);
 	}
+}
+
+void Server::UploadUserDatatoDB()
+{
+	for (int i = 0; i < MAX_USER; ++i) {
+		Client* client = reinterpret_cast<Client*>(g_clients[i]);
+		if (!client->is_use) continue;
+
+		DBEvent newEvent = DBEvent(UPDATE_POS, client->player_id, client, i);
+		db_queue.push(newEvent);
+	}
+
+	add_timer(-1, DB_UPDATE_TYPE, 10);
 }

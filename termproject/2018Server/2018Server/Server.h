@@ -9,7 +9,7 @@ using namespace std;
 
 const int NONE_TYPE = 0;
 const int MOVE_TYPE = 1;
-const int RESERVE_TYPE = 2;
+const int DB_UPDATE_TYPE = 2;
 
 struct Event {
 	int id;
@@ -69,6 +69,7 @@ public:
 
 	bool CanSee(int cl1, int cl2);
 	void addViewList(unordered_set<int>& viewList, const int clientID, const int x, const int y);
+	unordered_set<int> ProcessNearZone(int key);
 
 	void SendPacket(int id, void* packet);
 	void SendPutObject(int client, int object);
@@ -90,4 +91,6 @@ public:
 	queue<DBEvent>* getDB() { return&db_queue; }
 	mutex* getMutex() { return &tmp; }
 	void recv(unsigned long long& key, unsigned long& data_size, EXOver* exover);
+
+	void UploadUserDatatoDB();
 };

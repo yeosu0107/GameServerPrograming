@@ -27,6 +27,7 @@ public:
 static const char EV_RECV = 0;
 static const char EV_SEND = 1;
 static const char EV_MOVE = 2;
+static const char EV_DBUPDATE = 3;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;
@@ -40,6 +41,7 @@ public:
 	unordered_set<int> viewlist;
 	mutex vlm;
 	
+	int player_id;
 	//for io func
 	SOCKET s;
 	EXOver exover;

@@ -87,7 +87,7 @@ void DBConnect::UpdateUserPos(int id, int x, int y)
 
 	wchar_t tmp[100];
 	wsprintf(tmp, L"%d, %d, %d", id, x, y);
-	wstring tt(tmp[0], tmp[99]);
+	wstring tt(tmp);
 	wstring val = updatePos + tt;
 
 	retcode = SQLExecDirect(hstmt, (SQLWCHAR *)(val.c_str()), SQL_NTS);

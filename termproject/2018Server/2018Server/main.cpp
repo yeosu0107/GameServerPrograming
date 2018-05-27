@@ -40,6 +40,9 @@ void WorkerThread()
 		else if(exover->event_type==EV_SEND) {
 			delete exover;
 		}
+		else if (exover->event_type == EV_DBUPDATE) {
+			Server::getInstance()->UploadUserDatatoDB();
+		}
 		else {
 			cout << "Unknown Event Error in Worker Thread\n";
 		}
@@ -73,24 +76,33 @@ void TimerThread() {
 			continue;
 		Server::getInstance()->getMutex()->lock();
 		Event* nowEvent = event_queue->top();
+		event_queue->pop();
+		Server::getInstance()->getMutex()->unlock();
 		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent->startClock;
 		if (duration.count() > nowEvent->time) {
 			if (nowEvent->type == MOVE_TYPE) {
-				
-				event_queue->pop();
-				Server::getInstance()->getMutex()->unlock();
-
 				EXOver* over = new EXOver();
 				over->event_type = EV_MOVE;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
-				//delete nowEvent;
-				
+			}
+			else if(nowEvent->type == DB_UPDATE_TYPE) {
+				EXOver* over = new EXOver();
+				over->event_type = EV_DBUPDATE;
+
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					0, nowEvent->id, &over->wsaover);
 			}
 		}
-		else
+		else {
+			//아직 시간이 아니면 현재시간으로 바꾸고, 남은 시간 조절하고 다시 푸시
+			nowEvent->startClock = chrono::system_clock::now();
+			nowEvent->time -= duration.count();
+			Server::getInstance()->getMutex()->lock();
+			event_queue->push(nowEvent);
 			Server::getInstance()->getMutex()->unlock();
+		}
 	}
 }
 
@@ -106,6 +118,7 @@ void DBThread() {
 		else if (nowEvent->type == SEARCH_ID) {
 			bool ret = DBprocess.SearchUserAndLogin(nowEvent->id, nowEvent->client->x, nowEvent->client->y);
 			if (ret) {
+				nowEvent->client->player_id = nowEvent->id;
 				Server::getInstance()->AcceptNewClient(nowEvent->client, nowEvent->clientIndex);
 			}
 			else {
