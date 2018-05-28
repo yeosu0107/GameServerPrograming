@@ -96,6 +96,8 @@ void ProcessPacket(char *ptr)
 			g_myid = id;
 		}
 		if (id == g_myid) {
+			g_left_x = my_packet->x - 10;
+			g_top_y = my_packet->y - 10;
 			player.x = my_packet->x;
 			player.y = my_packet->y;
 			player.attr |= BOB_ATTR_VISIBLE;
@@ -165,8 +167,12 @@ void ProcessPacket(char *ptr)
 			npc[other_id - NPC_START].message_time = GetTickCount();
 		}
 		break;
-
 	}
+	case SC_DUPLICATON_PLAYER:
+		cout << "이미 접속한 ID입니다" << endl;
+		cout << "접속을 종료합니다" << endl;
+		exit(0);
+		break;
 	default:
 		printf("Unknown PACKET type [%d]\n", ptr[1]);
 	}

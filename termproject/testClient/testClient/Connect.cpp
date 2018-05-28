@@ -21,6 +21,10 @@ void error_quit(char* msg)
 
 ServerConnect::ServerConnect()
 {
+	char ipAddress[20];
+	cout << "IP를 입력 : ";
+	cin >> ipAddress;
+
 	int id = InputID();
 
 	if (WSAStartup(MAKEWORD(2, 2), &m_wsa) != 0)
@@ -34,9 +38,16 @@ ServerConnect::ServerConnect()
 	ZeroMemory(&ServerAddr, sizeof(SOCKADDR_IN));
 	ServerAddr.sin_family = AF_INET;
 	ServerAddr.sin_port = htons(MY_SERVER_PORT);
-	ServerAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	ServerAddr.sin_addr.s_addr = inet_addr(ipAddress);
 
 	int Result = connect(m_socket, (sockaddr *)&ServerAddr, sizeof(ServerAddr));
+
+	if (Result == -1) {
+		cout << "서버 연결에 실패하였습니다." << endl;
+		cout << "서버가 시동 되었는지 혹은 IP주소가 올바른지 확인해주세요" << endl;
+		CloseWindow();
+		return;
+	}
 
 	send_wsabuf.buf = send_buffer;
 	send_wsabuf.len = BUF_SIZE;
@@ -130,6 +141,13 @@ void ServerConnect::ProcessPacket(char * ptr)
 		}
 		break;
 	}
+	case SC_DUPLICATON_PLAYER:
+	{
+		cout << "중복된 아이디 입니다" << endl;
+		cout << "클라이언트를 종료합니다" << endl;
+		CloseWindow();
+		
+	}
 	/*case SC_CHAT:
 	{
 		sc_packet_chat *my_packet = reinterpret_cast<sc_packet_chat *>(ptr);
@@ -214,3 +232,4 @@ int ServerConnect::InputID()
 	return id;
 	
 }
+

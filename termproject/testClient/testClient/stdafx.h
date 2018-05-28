@@ -17,10 +17,11 @@
 #define WindowWidth 1000
 #define WindowHeight 1000
 
-
 using namespace std;
 
 const float tileSize = 50.0f;
+
+void CloseWindow();
 
 struct float3
 {

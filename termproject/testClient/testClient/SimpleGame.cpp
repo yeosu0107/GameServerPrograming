@@ -17,9 +17,11 @@ but WITHOUT ANY WARRANTY.
 #include "Connect.h"
 
 
+
 SceneMgr* scene = nullptr;
 ServerConnect* server = nullptr;
 bool g_LButtonDown = false;
+int thisWindow = -1;
 
 DWORD prevTime = timeGetTime();
 
@@ -64,7 +66,7 @@ void MouseInput(int button, int state, int x, int y)
 
 void KeyInput(unsigned char key, int x, int y)
 {
-
+	
 }
 
 DWORD prevInputTime;
@@ -102,7 +104,7 @@ int main(int argc, char **argv)
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(WindowWidth, WindowHeight);
-	glutCreateWindow("testClient");
+	thisWindow = glutCreateWindow("testClient");
 
 	glewInit();
 	if (glewIsSupported("GL_VERSION_3_0"))
@@ -121,9 +123,13 @@ int main(int argc, char **argv)
 	glutKeyboardFunc(KeyInput);
 	glutMouseFunc(MouseInput);
 	glutSpecialFunc(SpecialKeyInput);
-
+	
 	glutMainLoop();
 
 	delete scene;
     return 0;
+}
+
+void CloseWindow() {
+	glutDestroyWindow(thisWindow);
 }
