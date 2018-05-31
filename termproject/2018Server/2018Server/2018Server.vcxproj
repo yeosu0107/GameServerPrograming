@@ -117,17 +117,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Client.cpp" />
+    <ClCompile Include="CollisionMap.cpp" />
     <ClCompile Include="DBConnect.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="StringTokenizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
+    <ClInclude Include="CollisionMap.h" />
     <ClInclude Include="DBConnect.h" />
     <ClInclude Include="protocol.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringTokenizer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

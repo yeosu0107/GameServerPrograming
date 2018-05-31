@@ -60,6 +60,8 @@ private:
 	vector<Object*> g_clients;
 	unordered_set<int> g_zone[ZONE_INTERVAL][ZONE_INTERVAL];
 
+	int(*g_collisionMap)[300];
+
 	bool isNPC(int index);
 public:
 	~Server();

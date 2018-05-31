@@ -21,12 +21,18 @@
     <ClInclude Include="..\..\2018Server\2018Server\protocol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="mapObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gpdumb1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="2DClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mapObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

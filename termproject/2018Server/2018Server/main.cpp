@@ -140,6 +140,7 @@ int main(void)
 	all_threads.push_back(thread(AcceptThread));
 	all_threads.push_back(thread(TimerThread));
 	all_threads.push_back(thread(DBThread));
+
 	for (auto& th : all_threads) {
 		th.join();
 	}

@@ -18,6 +18,8 @@
 #include <d3d9.h>     // directX includes
 #include "d3dx9tex.h"     // directX includes
 #include "gpdumb1.h"
+#include "mapObject.h"
+
 #include "..\..\2018Server\2018Server\protocol.h"
 
 #pragma comment (lib, "ws2_32.lib")
@@ -33,8 +35,8 @@ using namespace std;
 // defines for windows 
 #define WINDOW_CLASS_NAME L"WINXCLASS"  // class name
 
-#define WINDOW_WIDTH    950   // size of window 680
-#define WINDOW_HEIGHT   990
+#define WINDOW_WIDTH    680  // size of window 680
+#define WINDOW_HEIGHT   710
 
 #define	BUF_SIZE				1024
 #define	WM_SOCKET				WM_USER + 1
@@ -54,18 +56,17 @@ char buffer[80];                // used to print text
 
 // demo globals
 BOB			player;				// 플레이어 Unit
-BOB			tree[50 * 50];
+//BOB			tree[50 * 50];
 BOB			npc[NUM_OF_NPC];      // NPC Unit
 BOB         skelaton[MAX_USER];     // the other player skelaton
 
-BITMAP_IMAGE reactor;      // the background   
+MapObject* mapObject;
 
-BITMAP_IMAGE black_tile;
-BITMAP_IMAGE white_tile;
-#define TILE_WIDTH 44
+#define TILE_WIDTH 32
 
 #define UNIT_TEXTURE  0
 #define UINT_TREE_TEXTURE 1
+#define MAP_BACKTEXTURE 2
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -214,7 +215,7 @@ void clienterror()
 }
 
 DWORD prevInputTime;
-float inputInterval = 1.0f;
+float inputInterval = 0.1f;
 
 LRESULT CALLBACK WindowProc(HWND hwnd,
 	UINT msg,
@@ -407,46 +408,15 @@ int Game_Init(void *parms)
 	DD_Init(screen_width, screen_height, screen_bpp);
 
 
-	// create and load the reactor bitmap image
-	Create_Bitmap32(&reactor, 0, 0, 531, 532);
-	Create_Bitmap32(&black_tile, 0, 0, 531, 532);
-	Create_Bitmap32(&white_tile, 0, 0, 531, 532);
-	Load_Image_Bitmap32(&reactor, L"CHESSMAP.BMP", 0, 0, BITMAP_EXTRACT_MODE_ABS);
-	Load_Image_Bitmap32(&black_tile, L"CHESSMAP.BMP", 0, 0, BITMAP_EXTRACT_MODE_ABS);
-	black_tile.x = 69;
-	black_tile.y = 5;
-	black_tile.height = TILE_WIDTH;
-	black_tile.width = TILE_WIDTH;
-	Load_Image_Bitmap32(&white_tile, L"CHESSMAP.BMP", 0, 0, BITMAP_EXTRACT_MODE_ABS);
-	white_tile.x = 5;
-	white_tile.y = 5;
-	white_tile.height = TILE_WIDTH;
-	white_tile.width = TILE_WIDTH;
-
 	// now let's load in all the frames for the skelaton!!!
 
-	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 276, TILE_WIDTH);
-	Load_Texture(L"tree.png", UINT_TREE_TEXTURE, TILE_WIDTH, TILE_WIDTH);
+	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 192, TILE_WIDTH);
+	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
 
 	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
 	Load_Frame_BOB32(&player, UNIT_TEXTURE, 0, 2, 0, BITMAP_EXTRACT_MODE_CELL);
 
-	int index = 0;
-	for (int i = 0; i < 50; ++i) {
-		for (int j = 0; j < 50; ++j) {
-			if (!Create_BOB32(&tree[index], 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
-			Load_Frame_BOB32(&tree[index], UINT_TREE_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
-
-			Set_Animation_BOB32(&tree[index], 0);
-			Set_Anim_Speed_BOB32(&tree[index], 4);
-			Set_Vel_BOB32(&tree[index], 0, 0);
-			Set_Pos_BOB32(&tree[index], i * 8, j * 8);
-			tree[index].attr |= BOB_ATTR_VISIBLE;
-
-			index += 1;
-		}
-	}
-
+	mapObject = new MapObject(MAP_BACKTEXTURE);
 
 	// set up stating state of skelaton
 	Set_Animation_BOB32(&player, 0);
@@ -536,9 +506,6 @@ int Game_Shutdown(void *parms)
 	// release all resources that you allocated
 
 	// kill the reactor
-	Destroy_Bitmap32(&black_tile);
-	Destroy_Bitmap32(&white_tile);
-	Destroy_Bitmap32(&reactor);
 
 	// kill skelaton
 	for (int i = 0; i < MAX_USER; ++i) Destroy_BOB32(&skelaton[i]);
@@ -564,7 +531,7 @@ int Game_Main(void *parms)
 	// check of user is trying to exit
 	if (KEY_DOWN(VK_ESCAPE) || KEY_DOWN(VK_SPACE))
 		PostMessage(main_window_handle, WM_DESTROY, 0, 0);
-
+	mapObject->setRect(g_left_x, g_top_y);
 	// start the timing clock
 	Start_Clock();
 
@@ -575,20 +542,8 @@ int Game_Main(void *parms)
 
 	g_pd3dDevice->BeginScene();
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
-
-	// draw the background reactor image
-	for (int i = 0; i < 21; ++i)
-		for (int j = 0; j < 21; ++j)
-		{
-			int tile_x = i + g_left_x;
-			int tile_y = j + g_top_y;
-			if ((tile_x < 0) || (tile_y < 0)) continue;
-			if (((tile_x >> 2) % 2) == ((tile_y >> 2) % 2))
-				Draw_Bitmap32(&white_tile, TILE_WIDTH * i + 7, TILE_WIDTH * j + 7);
-			else
-				Draw_Bitmap32(&black_tile, TILE_WIDTH * i + 7, TILE_WIDTH * j + 7);
-		}
-	//	Draw_Bitmap32(&reactor);
+	
+	mapObject->draw();
 
 	g_pSprite->End();
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
@@ -598,9 +553,6 @@ int Game_Main(void *parms)
 	Draw_BOB32(&player);
 	for (int i = 0; i < MAX_USER; ++i) Draw_BOB32(&skelaton[i]);
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) Draw_BOB32(&npc[i]);
-
-	//draw trees
-	for (int i = 0; i < 50 * 50; ++i) Draw_BOB32(&tree[i]);
 
 	// draw some text
 	wchar_t text[300];
@@ -615,7 +567,6 @@ int Game_Main(void *parms)
 
 	// sync to 3o fps
 	//Wait_Clock(30);
-
 
 	// return success
 	return(1);

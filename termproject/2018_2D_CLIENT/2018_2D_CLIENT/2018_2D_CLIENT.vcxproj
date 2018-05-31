@@ -84,10 +84,12 @@
   <ItemGroup>
     <ClInclude Include="..\..\2018Server\2018Server\protocol.h" />
     <ClInclude Include="gpdumb1.h" />
+    <ClInclude Include="mapObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2DClient.cpp" />
     <ClCompile Include="gpdumb1.cpp" />
+    <ClCompile Include="mapObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="chess2.png" />

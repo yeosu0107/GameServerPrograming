@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Server.h"
+#include "CollisionMap.h"
 
 
 Server* Server::g_server = nullptr;
@@ -27,6 +28,9 @@ Server * Server::getInstance()
 
 void Server::Initialize()
 {
+	//CollisionMap mapFile;
+	//g_collisionMap = mapFile.getCollisionMap();
+
 	//g_clients.resize(NUM_OF_NPC, new Client());
 	for (int i = 0; i < NPC_START; ++i) {
 		Client* client = new Client();
