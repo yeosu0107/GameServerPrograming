@@ -57,8 +57,10 @@ void Server::Initialize()
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
 
 	g_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);
-
+#ifdef DB
 	UploadUserDatatoDB();
+#endif
+	cout << "Server Initialize Complete" << endl;
 }
 
 bool Server::CanSee(int cl1, int cl2) {
@@ -137,7 +139,7 @@ unordered_set<int> Server::ProcessNearZone(int key)
 
 void Server::SendPacket(int id, void* packet) {
 	EXOver* over = new EXOver;
-	char* p = reinterpret_cast<char*>(packet);
+	unsigned char* p = reinterpret_cast<unsigned char*>(packet);
 	memcpy(over->io_buf, p, p[0]);
 	over->event_type = EV_SEND;
 	over->wsabuf.buf = over->io_buf;
@@ -181,10 +183,10 @@ void Server::DisconnectPlayer(int id) {
 	closesocket(now->s);
 
 	cout << "Client [" << id << "] DisConnected\n";
-
+#ifdef DB
 	DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
 	db_queue.push(newEvent);
-
+#endif
 	sc_packet_remove_player p;
 	p.id = id;
 	p.size = sizeof(p);
@@ -377,7 +379,7 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 
 	newClient->is_use = true;
 	newClient->viewlist.clear();
-
+#ifdef DB
 	DWORD iobyte, ioflag = 0;
 	DWORD in_packet_size = 0;
 	int saved_packet_size = 0;
@@ -397,8 +399,6 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 		newClient->is_use = false;
 		return;
 	}
-	/*BYTE ptr[2] = { 0,1 };
-	SearchClientID(ptr, newClient, new_key);*/
 	BYTE *ptr = reinterpret_cast<BYTE *>(recv_buffer);
 	while (0 != iobyte) {
 		if (0 == in_packet_size) in_packet_size = ptr[0];
@@ -414,6 +414,9 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 			iobyte = 0;
 		}
 	}
+#else
+	SearchClientID(nullptr, newClient, new_key);
+#endif
 }
 
 void Server::AcceptNewClient(Client* client, int new_key)
@@ -486,6 +489,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 
 void Server::SearchClientID(BYTE* id, Client* client, int index)
 {
+#ifdef DB
 	int cID = id[1];
 
 	for (int i = 0; i < MAX_USER; ++i) {
@@ -505,6 +509,9 @@ void Server::SearchClientID(BYTE* id, Client* client, int index)
 
 	DBEvent newEvent = DBEvent(SEARCH_ID, cID, client, index);
 	db_queue.push(newEvent);
+#else
+	AcceptNewClient(client, index);
+#endif
 }
 
 void Server::add_timer(int id, int type, float time)
@@ -612,7 +619,7 @@ HANDLE * Server::getIOCP()
 void Server::recv(unsigned long long& key, unsigned long& data_size, EXOver* exover)
 {
 	int recv_size = data_size;
-	char* ptr = exover->io_buf;
+	unsigned char* ptr = reinterpret_cast<unsigned char*>(exover->io_buf);
 
 	if (!isNPC(key)) {
 		Client* client = reinterpret_cast<Client*>(g_clients[key]);

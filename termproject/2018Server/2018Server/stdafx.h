@@ -14,3 +14,5 @@
 #pragma comment (lib, "ws2_32.lib")
 
 void err_display(const char* msg, int err_no);
+
+//#define DB

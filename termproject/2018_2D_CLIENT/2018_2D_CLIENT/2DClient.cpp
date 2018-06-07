@@ -462,10 +462,15 @@ int Game_Init(void *parms)
 	//ShowCursor(FALSE);
 	char ipAddress[20];
 	int id;
+#ifdef DB
 	cout << "IP 입력 : ";
 	cin >> ipAddress;
 	cout << "ID 입력 : ";
 	cin >> id;
+#else
+	strcpy(ipAddress, "127.0.0.1");
+	id = 1;
+#endif
 
 	WSADATA	wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);

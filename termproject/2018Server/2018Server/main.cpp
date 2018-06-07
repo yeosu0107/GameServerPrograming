@@ -133,14 +133,19 @@ int main(void)
 {	
 	vector<thread> all_threads;
 	Server::getInstance()->Initialize();
-	
+#ifdef DB
+	cout << "set DB connect : true" << endl;
+#else
+	cout << "set DB Connect : false" << endl;
+#endif
 	for (int i = 0; i < 4; ++i) {
 		all_threads.push_back(thread(WorkerThread));
 	}
 	all_threads.push_back(thread(AcceptThread));
 	all_threads.push_back(thread(TimerThread));
+#ifdef DB
 	all_threads.push_back(thread(DBThread));
-
+#endif
 	for (auto& th : all_threads) {
 		th.join();
 	}
