@@ -19,7 +19,7 @@ void WorkerThread()
 
 		// 에러 처리
 		if (is_success == FALSE) {
-			cout << "Error is GQCS key [" << key << "]\n";
+			//cout << "Error is GQCS key [" << key << "]\n";
 			Server::getInstance()->DisconnectPlayer(key);
 			continue;
 		}
@@ -36,15 +36,17 @@ void WorkerThread()
 		}
 		else if (exover->event_type == EV_MOVE) {
 			Server::getInstance()->MoveNpc((int)key);
+			delete exover;
 		}
 		else if(exover->event_type==EV_SEND) {
 			delete exover;
 		}
 		else if (exover->event_type == EV_DBUPDATE) {
 			Server::getInstance()->UploadUserDatatoDB();
+			delete exover;
 		}
 		else {
-			cout << "Unknown Event Error in Worker Thread\n";
+			//cout << "Unknown Event Error in Worker Thread\n";
 		}
 	}
 }
@@ -70,7 +72,9 @@ void AcceptThread()
 }
 
 void TimerThread() {
-	auto event_queue = Server::getInstance()->getEventQueue();
+	priority_queue<Event*, vector<Event*>, compare>* event_queue 
+		= Server::getInstance()->getEventQueue();
+
 	while (true) {
 		if (event_queue->empty())
 			continue;
@@ -94,12 +98,14 @@ void TimerThread() {
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
 			}
+			delete nowEvent;
 		}
 		else {
 			//아직 시간이 아니면 현재시간으로 바꾸고, 남은 시간 조절하고 다시 푸시
 			nowEvent->startClock = chrono::system_clock::now();
 			nowEvent->time -= duration.count();
 			Server::getInstance()->getMutex()->lock();
+			//event_queue->push(nowEvent);
 			event_queue->push(nowEvent);
 			Server::getInstance()->getMutex()->unlock();
 		}
@@ -122,7 +128,7 @@ void DBThread() {
 				Server::getInstance()->AcceptNewClient(nowEvent->client, nowEvent->clientIndex);
 			}
 			else {
-				cout << "Unknown ID" << endl;
+				//cout << "Unknown ID" << endl;
 			}	
 		}
 		db_queue->pop();

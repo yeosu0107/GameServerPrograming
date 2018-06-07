@@ -75,20 +75,18 @@ void Server::addViewList(unordered_set<int>& viewList, const int clientID, const
 	//해당 존에 있는 클라이언트들을 viewList에 인서트
 	if (!isNPC(clientID)) {
 		for (auto& i : g_zone[y][x]) {
-			Client* now = reinterpret_cast<Client*>(g_clients[i]);
 			if (i == clientID) continue;
-			if (!now->is_use) continue;
+			if (!g_clients[i]->is_use) continue;
 			if (!CanSee(clientID, i)) continue;
 			viewList.insert(i);
 		}
 	}
 	else {
 		for (auto& i : g_zone[y][x]) {
-			Client* now = reinterpret_cast<Client*>(g_clients[i]);
 			if (i == clientID) continue;
 			if (isNPC(i)) continue;
-			if (!now->is_use) continue;
-			//if (!CanSee(clientID, i)) continue;
+			if (!g_clients[i]->is_use) continue;
+			if (!CanSee(clientID, i)) continue;
 			viewList.insert(i);
 		}
 	}
@@ -102,33 +100,33 @@ unordered_set<int> Server::ProcessNearZone(int key)
 	UINT x_interval = g_clients[key]->x % ZONE_INTERVAL;
 	UINT y_interval = g_clients[key]->y % ZONE_INTERVAL;
 
-	//인접 존 처리
-	if (x_interval < 7 && y_interval < 7) {
+	////인접 존 처리
+	if (x_interval < VIEW_RADIUS && y_interval < VIEW_RADIUS) {
 		if (g_clients[key]->zone_y > 0 && g_clients[key]->zone_x > 0) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y - 1);
 		}
 	}
-	else if (x_interval > 13 && y_interval > 13) {
+	else if (x_interval > ZONE_EDGH && y_interval > ZONE_EDGH) {
 		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1 && g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y + 1);
 		}
 	}
-	if (x_interval < 7) {
+	if (x_interval < VIEW_RADIUS) {
 		if (g_clients[key]->zone_x > 0) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x - 1, g_clients[key]->zone_y);
 		}
 	}
-	else if (x_interval > 13) {
+	else if (x_interval > ZONE_EDGH) {
 		if (g_clients[key]->zone_x < ZONE_INTERVAL - 1) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x + 1, g_clients[key]->zone_y);
 		}
 	}
-	if (y_interval < 7) {
+	if (y_interval < VIEW_RADIUS) {
 		if (g_clients[key]->zone_y > 0) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y - 1);
 		}
 	}
-	else if (y_interval > 13) {
+	else if (y_interval > ZONE_EDGH) {
 		if (g_clients[key]->zone_y < ZONE_INTERVAL - 1) {
 			addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y + 1);
 		}
@@ -152,8 +150,8 @@ void Server::SendPacket(int id, void* packet) {
 
 	if (ret != 0) {
 		int err_no = WSAGetLastError();
-		if (WSA_IO_PENDING != err_no) //에러코드가 이것이면 에러가 아니다. (send가 끝났는데 계속 send인 경우)
-			err_display("Error in SendPacket : ", err_no);
+		//if (WSA_IO_PENDING != err_no) //에러코드가 이것이면 에러가 아니다. (send가 끝났는데 계속 send인 경우)
+		//	err_display("Error in SendPacket : ", err_no);
 	}
 }
 
@@ -182,7 +180,7 @@ void Server::DisconnectPlayer(int id) {
 
 	closesocket(now->s);
 
-	cout << "Client [" << id << "] DisConnected\n";
+	//cout << "Client [" << id << "] DisConnected\n";
 #ifdef DB
 	DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
 	db_queue.push(newEvent);
@@ -195,6 +193,8 @@ void Server::DisconnectPlayer(int id) {
 	now->vlm.lock();
 	unordered_set<int> vl_copy = now->viewlist;
 	now->viewlist.clear();
+	unordered_set<int> del;
+	now->viewlist.swap(del);
 	now->vlm.unlock();
 	for (auto& i : vl_copy) {
 		if (isNPC(i)) continue;
@@ -240,8 +240,12 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		if (client->x >= BOARD_WIDTH)
 			client->x = BOARD_WIDTH - 1;
 		break;
+	case CS_RANDOM:
+		client->x = rand() % BOARD_WIDTH;
+		client->y = rand() % BOARD_HEIGHT;
+		break;
 	default:
-		cout << "Unknown Protocol from Client [" << clientID << "]\n";
+		//cout << "Unknown Protocol from Client [" << clientID << "]\n";
 		return;
 	}
 	int prev_x = client->zone_x;
@@ -264,6 +268,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 	posPacket.y = client->y;
 
 	unordered_set<int> new_viewList = ProcessNearZone(clientID);
+	//new_viewList.swap(*&ProcessNearZone(clientID));
 
 	for (auto& id : new_viewList) {
 		//새로 viewlist에 들어오는 객체 처리
@@ -354,7 +359,7 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 
 	auto new_socket = WSAAccept(g_socket, reinterpret_cast<SOCKADDR*>(&c_addr),
 		&c_addr_len, NULL, NULL);
-	cout << "new Client Accepted!\n";
+	//cout << "new Client Accepted!\n";
 
 	int new_key = -1;
 
@@ -369,7 +374,7 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 		cout << "MAX USER EXCEEDED!!\n";
 		return;
 	}
-	cout << "New Client's ID : " << new_key << endl;
+	//cout << "New Client's ID : " << new_key << endl;
 	Client* newClient = reinterpret_cast<Client*>(g_clients[new_key]);
 
 	newClient->s = new_socket;
@@ -379,6 +384,7 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 
 	newClient->is_use = true;
 	newClient->viewlist.clear();
+
 #ifdef DB
 	DWORD iobyte, ioflag = 0;
 	DWORD in_packet_size = 0;
@@ -434,8 +440,8 @@ void Server::AcceptNewClient(Client* client, int new_key)
 
 	if (ret != 0) {
 		int err_no = WSAGetLastError();
-		if (err_no != WSA_IO_PENDING)
-			err_display("Recv in AcceptThread", err_no);
+		//if (err_no != WSA_IO_PENDING)
+		//	err_display("Recv in AcceptThread", err_no);
 	}
 
 	sc_packet_put_player p;
@@ -523,6 +529,7 @@ void Server::add_timer(int id, int type, float time)
 	now->type = type;
 
 	tmp.lock();
+	//event_queue.push(now);
 	event_queue.push(now);
 	tmp.unlock();
 }
@@ -553,6 +560,17 @@ void Server::MoveNpc(int key)
 	default:
 		return;
 	}
+	int prev_x = g_clients[key]->zone_x;
+	int prev_y = g_clients[key]->zone_y;
+
+	g_clients[key]->zone_x = g_clients[key]->x / ZONE_INTERVAL;
+	g_clients[key]->zone_y = g_clients[key]->y / ZONE_INTERVAL;
+
+	if (g_clients[key]->zone_x != prev_x || g_clients[key]->zone_y != prev_y) {
+		g_zone[prev_y][prev_x].erase(key);
+		g_zone[g_clients[key]->zone_y][g_clients[key]->zone_x].insert(key);
+	}
+
 	sc_packet_pos posPacket;
 	posPacket.id = key;
 	posPacket.size = sizeof(sc_packet_pos);
@@ -656,8 +674,8 @@ void Server::recv(unsigned long long& key, unsigned long& data_size, EXOver* exo
 
 		if (ret != 0) {
 			int err_no = WSAGetLastError();
-			if (err_no != WSA_IO_PENDING)
-				err_display("Recv in WorkThread", err_no);
+		/*	if (err_no != WSA_IO_PENDING)
+				err_display("Recv in WorkThread", err_no);*/
 		}
 	}
 	else {

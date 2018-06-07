@@ -2,15 +2,15 @@
 #define MAX_BUFF_SIZE   4000
 #define MAX_PACKET_SIZE  255
 
-#define BOARD_WIDTH   400
-#define BOARD_HEIGHT  400
+#define BOARD_WIDTH   300
+#define BOARD_HEIGHT  300
 
 #define VIEW_RADIUS   7
 
-#define MAX_USER 100		//ID (0~9)
+#define MAX_USER 1000		//ID (0~9)
 
-#define NPC_START  100		//NPC ID (100 ~ 200100)
-#define NUM_OF_NPC  200100		//유저 + NPC의 수
+#define NPC_START  1000		//NPC ID
+#define NUM_OF_NPC  201000		//유저 + NPC의 수
 
 #define MY_SERVER_PORT  4000
 
@@ -21,6 +21,7 @@
 #define CS_LEFT  3
 #define CS_RIGHT    4
 #define CS_CHAT		5
+#define CS_RANDOM 6
 
 #define SC_POS           1
 #define SC_PUT_PLAYER    2
@@ -28,7 +29,8 @@
 #define SC_CHAT			4
 #define SC_DUPLICATON_PLAYER 5
 
-#define ZONE_INTERVAL 20
+#define ZONE_INTERVAL 30
+#define ZONE_EDGH  23
 
 #pragma pack (push, 1)
 

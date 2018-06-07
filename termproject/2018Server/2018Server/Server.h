@@ -58,7 +58,7 @@ private:
 	mutex tmp;
 
 	vector<Object*> g_clients;
-	unordered_set<int> g_zone[ZONE_INTERVAL][ZONE_INTERVAL];
+	unordered_set<int> g_zone[10][10];
 
 	int(*g_collisionMap)[300];
 

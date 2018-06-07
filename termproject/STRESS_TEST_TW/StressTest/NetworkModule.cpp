@@ -12,10 +12,14 @@
 #include <array>
 #include <unordered_map>
 
+#pragma comment(linker,"/entry:WinMainCRTStartup /subsystem:console")
+
 using namespace std;
 using namespace chrono;
 
-const static int MAX_TEST = 50;
+
+static bool isHotspot = false;
+static int MAX_TEST = 500;
 const static int INVALID_ID = -1;
 
 
@@ -73,7 +77,7 @@ void error_display(char *msg, int err_no)
 		NULL, err_no,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		(LPTSTR)&lpMsgBuf, 0, NULL);
-	std::cout << msg;
+	//std::cout << msg;
 	std::wcout << L"에러" << lpMsgBuf << std::endl;
 	LocalFree(lpMsgBuf);
 	//while (true);
@@ -83,7 +87,7 @@ void DisconnectClient(int ci)
 {
 	closesocket(g_clients[ci].client_socket);
 	g_clients[ci].connect = false;
-	cout << "Client [" << ci << "] Disconnected!\n";
+	//cout << "Client [" << ci << "] Disconnected!\n";
 }
 
 void ProcessPacket(int ci, unsigned char packet[])
@@ -100,7 +104,8 @@ void ProcessPacket(int ci, unsigned char packet[])
 	case SC_PUT_PLAYER: break;
 	case SC_REMOVE_PLAYER: break;
 	case SC_CHAT: break;
-	default: std::cout << "Unknown Packet Type from Server : " << ci << std::endl;
+	default:
+		//std::cout << "Unknown Packet Type from Server : " << ci << std::endl;
 		while (true);
 	}
 }
@@ -124,8 +129,8 @@ void Worker_Thread()
 			continue;
 		}
 		if (OP_RECV == over->event_type) {
-			std::cout << "RECV from Client :" << ci;
-			std::cout << "  IO_SIZE : " << io_size << std::endl;
+			//std::cout << "RECV from Client :" << ci;
+			//std::cout << "  IO_SIZE : " << io_size << std::endl;
 			unsigned char *buf = g_clients[ci].recv_over.IOCP_buf;
 			unsigned psize = g_clients[ci].curr_packet_size;
 			unsigned pr_size = g_clients[ci].prev_packet_data;
@@ -156,7 +161,7 @@ void Worker_Thread()
 		}
 		else if (OP_SEND == over->event_type) {
 			if (io_size != over->wsabuf.len) {
-				std::cout << "Send Incomplete Error!\n";
+				//std::cout << "Send Incomplete Error!\n";
 				closesocket(g_clients[ci].client_socket);
 				g_clients[ci].connect = false;
 			}
@@ -167,16 +172,43 @@ void Worker_Thread()
 			delete over;
 		}
 		else {
-			std::cout << "Unknown GQCS event!\n";
+			//std::cout << "Unknown GQCS event!\n";
 			while (true);
 		}
 	}
 }
 
+int tmpCount = 0;
+
+void SendPacket(int cl, void *packet)
+{
+	int psize = reinterpret_cast<unsigned char *>(packet)[0];
+	int ptype = reinterpret_cast<unsigned char *>(packet)[1];
+	OverlappedEx *over = new OverlappedEx;
+	over->event_type = OP_SEND;
+	memcpy(over->IOCP_buf, packet, psize);
+	ZeroMemory(&over->over, sizeof(over->over));
+	over->wsabuf.buf = reinterpret_cast<CHAR *>(over->IOCP_buf);
+	over->wsabuf.len = psize;
+	int ret = WSASend(g_clients[cl].client_socket, &over->wsabuf, 1, NULL, 0,
+		&over->over, NULL);
+	if (0 != ret) {
+		int err_no = WSAGetLastError();
+		if (WSA_IO_PENDING != err_no)
+			error_display("Error in SendPacket:", err_no);
+	}
+	//std::cout << "Send Packet [" << ptype << "] To Client : " << cl << std::endl;
+}
+
 void Adjust_Number_Of_Client()
 {
 	if (num_connections >= MAX_TEST) return;
-	if (high_resolution_clock::now() < last_connect_time + 100ms) return;
+	if (high_resolution_clock::now() < last_connect_time + 1s) return;
+	tmpCount += 1;
+	if (tmpCount >= 50) {
+		last_connect_time = high_resolution_clock::now();
+		tmpCount = 0;
+	}
 
 	g_clients[num_connections].client_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
@@ -203,27 +235,15 @@ void Adjust_Number_Of_Client()
 		NULL, &recv_flag, &g_clients[num_connections].recv_over.over, NULL);
 	g_clients[num_connections].connect = true;
 	num_connections++;
+
+	if (isHotspot == false) {
+		cs_packet_up my_packet;
+		my_packet.type = CS_RANDOM;
+		SendPacket(num_connections-1, &my_packet);
+	}
 }
 
-void SendPacket(int cl, void *packet)
-{
-	int psize = reinterpret_cast<unsigned char *>(packet)[0];
-	int ptype = reinterpret_cast<unsigned char *>(packet)[1];
-	OverlappedEx *over = new OverlappedEx;
-	over->event_type = OP_SEND;
-	memcpy(over->IOCP_buf, packet, psize);
-	ZeroMemory(&over->over, sizeof(over->over));
-	over->wsabuf.buf = reinterpret_cast<CHAR *>(over->IOCP_buf);
-	over->wsabuf.len = psize;
-	int ret = WSASend(g_clients[cl].client_socket, &over->wsabuf, 1, NULL, 0,
-		&over->over, NULL);
-	if (0 != ret) {
-		int err_no = WSAGetLastError();
-		if (WSA_IO_PENDING != err_no)
-			error_display("Error in SendPacket:", err_no);
-	}
-	std::cout << "Send Packet [" << ptype << "] To Client : " << cl << std::endl;
-}
+
 
 void Test_Thread()
 {
@@ -247,8 +267,21 @@ void Test_Thread()
 	}
 }
 
+int tmptype;
+
 void InitializeNetwork()
 {
+	printf("DummyClient Start\n");
+	printf("테스트 타입을 선택 (노말 : 0 / 핫스팟 : 1) : ");
+	scanf("%d", &tmptype);
+	if (tmptype == 0)
+		isHotspot = false;
+	else
+		isHotspot = true;
+	printf("더미 클라이언트 갯수 입력 : ");
+	scanf("%d", &MAX_TEST);
+
+
 	for (int i = 0; i < MAX_USER; ++i) {
 		g_clients[i].connect = false;
 		g_clients[i].id = INVALID_ID;
