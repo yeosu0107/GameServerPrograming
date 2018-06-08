@@ -37,7 +37,7 @@ void Server::Initialize()
 		g_clients.emplace_back(client);
 	}
 	wcout.imbue(locale("korean"));
-
+	srand((unsigned)time(NULL));
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
 		int xPos = rand() % BOARD_WIDTH;
 		int yPos = rand() % BOARD_HEIGHT;
@@ -266,8 +266,8 @@ void Server::ProcessPacket(int clientID, char* packet) {
 	posPacket.x = client->x;
 	posPacket.y = client->y;
 
-	unordered_set<int> new_viewList = ProcessNearZone(clientID);
-	//new_viewList.swap(*&ProcessNearZone(clientID));
+	unordered_set<int> new_viewList;// = ProcessNearZone(clientID);
+	new_viewList.swap(*&ProcessNearZone(clientID));
 
 	for (auto& id : new_viewList) {
 		//새로 viewlist에 들어오는 객체 처리
@@ -612,6 +612,9 @@ void Server::MoveNpc(int key)
 	}
 	else {
 		g_clients[key]->is_active = false;
+		//thisNPC->vlm.lock();
+		thisNPC->viewlist.swap(*new unordered_set<int>());
+		//thisNPC->vlm.unlock();
 	}
 }
 
