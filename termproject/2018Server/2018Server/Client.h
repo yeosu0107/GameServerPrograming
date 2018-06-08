@@ -19,9 +19,21 @@ public:
 class Npc : public Object {
 public:
 	bool is_live;
-	
-
+	mutex vlm;
+	unordered_set<int> viewlist;
 	int hp, mp;
+
+	Npc() {}
+
+	Npc(int xPos, int yPos)
+	{
+		x = xPos;
+		y = yPos;
+		is_use = true;
+		is_active = false;
+		zone_x = x / ZONE_INTERVAL;
+		zone_y = y / ZONE_INTERVAL;
+	}
 };
 
 static const char EV_RECV = 0;
@@ -38,8 +50,8 @@ struct EXOver {
 
 class Client : public Npc {
 public:
-	unordered_set<int> viewlist;
-	mutex vlm;
+	//unordered_set<int> viewlist;
+	//mutex vlm;
 	
 	int player_id;
 	//for io func

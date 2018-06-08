@@ -39,17 +39,11 @@ void Server::Initialize()
 	wcout.imbue(locale("korean"));
 
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
-		Npc* now = new Npc();
-		now->is_use = true;
-		now->is_active = false;
-		now->x = rand() % BOARD_WIDTH;
-		now->y = rand() % BOARD_HEIGHT;
+		int xPos = rand() % BOARD_WIDTH;
+		int yPos = rand() % BOARD_HEIGHT;
 
-		now->zone_x = now->x / ZONE_INTERVAL;
-		now->zone_y = now->y / ZONE_INTERVAL;
-
-		g_zone[now->zone_y][now->zone_x].insert(i);
-		g_clients.emplace_back(now);
+		g_zone[yPos / ZONE_INTERVAL][xPos/ZONE_INTERVAL].emplace(i);
+		g_clients.emplace_back(new Npc(xPos, yPos));
 	}
 	
 
@@ -74,20 +68,20 @@ bool Server::CanSee(int cl1, int cl2) {
 void Server::addViewList(unordered_set<int>& viewList, const int clientID, const int x, const int y) {
 	//해당 존에 있는 클라이언트들을 viewList에 인서트
 	if (!isNPC(clientID)) {
-		for (auto& i : g_zone[y][x]) {
+		for (const int& i : g_zone[y][x]) {
 			if (i == clientID) continue;
 			if (!g_clients[i]->is_use) continue;
 			if (!CanSee(clientID, i)) continue;
-			viewList.insert(i);
+			viewList.emplace(i);
 		}
 	}
 	else {
-		for (auto& i : g_zone[y][x]) {
+		for (const int& i : g_zone[y][x]) {
 			if (i == clientID) continue;
 			if (isNPC(i)) continue;
 			if (!g_clients[i]->is_use) continue;
 			if (!CanSee(clientID, i)) continue;
-			viewList.insert(i);
+			viewList.emplace(i);
 		}
 	}
 }
@@ -97,6 +91,10 @@ unordered_set<int> Server::ProcessNearZone(int key)
 	unordered_set<int> new_viewList;
 	//같은존
 	addViewList(new_viewList, key, g_clients[key]->zone_x, g_clients[key]->zone_y);
+	
+	if(isNPC(key))
+		return new_viewList;
+
 	UINT x_interval = g_clients[key]->x % ZONE_INTERVAL;
 	UINT y_interval = g_clients[key]->y % ZONE_INTERVAL;
 
@@ -182,8 +180,9 @@ void Server::DisconnectPlayer(int id) {
 
 	//cout << "Client [" << id << "] DisConnected\n";
 #ifdef DB
-	DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
-	db_queue.push(newEvent);
+	//DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
+	//db_queue.push(newEvent);
+	db_queue.emplace(DBEvent(UPDATE_POS, now->player_id, now, id));
 #endif
 	sc_packet_remove_player p;
 	p.id = id;
@@ -256,7 +255,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 
 	if (client->zone_x != prev_x || client->zone_y != prev_y) {
 		g_zone[prev_y][prev_x].erase(clientID);
-		g_zone[client->zone_y][client->zone_x].insert(clientID);
+		g_zone[client->zone_y][client->zone_x].emplace(clientID);
 	}
 
 	client->type = 0;
@@ -274,39 +273,43 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		//새로 viewlist에 들어오는 객체 처리
 		client->vlm.lock();
 		if (client->viewlist.count(id) == 0) {
-			client->viewlist.insert(id);
+			client->viewlist.emplace(id);
 			WakeUpNPC(id);
 			client->vlm.unlock();
 			SendPutObject(clientID, id);
 
-			if (isNPC(id)) continue;
+			//if (isNPC(id)) continue;
 
 			Client* target = reinterpret_cast<Client*>(g_clients[id]);
 			target->vlm.lock();
 			if (target->viewlist.count(clientID) == 0) {
-				target->viewlist.insert(clientID);
+				target->viewlist.emplace(clientID);
 				target->vlm.unlock();
+				if (isNPC(id)) continue;
 				SendPutObject(id, clientID);
 			}
 			else {
 				target->vlm.unlock();
+				if (isNPC(id)) continue;
 				SendPacket(id, &posPacket);
 			}
 		}
 		else {
 			client->vlm.unlock();
 			//view에 계속 남아있는 객체 처리
-			if (isNPC(id)) continue;
+			//if (isNPC(id)) continue;
 
 			Client* target = reinterpret_cast<Client*>(g_clients[id]);
 			target->vlm.lock();
 			if (target->viewlist.count(clientID) == 0) {
-				target->viewlist.insert(clientID);
+				target->viewlist.emplace(clientID);
 				target->vlm.unlock();
+				if (isNPC(id)) continue;
 				SendPutObject(id, clientID);
 			}
 			else {
 				target->vlm.unlock();
+				if (isNPC(id)) continue;
 				SendPacket(id, &posPacket);
 			}
 		}
@@ -321,13 +324,14 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		if (0 == new_viewList.count(id)) {
 			tmpDeleteList.emplace_back(id);
 
-			if (isNPC(id)) continue;
+			//if (isNPC(id)) continue;
 
 			Client* target = reinterpret_cast<Client*>(g_clients[id]);
 			target->vlm.lock();
 			if (0 != target->viewlist.count(clientID)) {
 				target->viewlist.erase(clientID);
 				target->vlm.unlock();
+				if (isNPC(id)) continue;
 				SendRemoveObject(id, clientID);
 			}
 			else
@@ -454,7 +458,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 	newClient->zone_x = p.x / ZONE_INTERVAL;
 	newClient->zone_y = p.y / ZONE_INTERVAL;
 
-	g_zone[newClient->zone_y][newClient->zone_x].insert(new_key);
+	g_zone[newClient->zone_y][newClient->zone_x].emplace(new_key);
 	unordered_set<int> nearList = ProcessNearZone(new_key);
 	//나의 접속을 다른 플레이어에게 알림 (나를 포함)
 	//같은 존 & 인접 존에 있는 플레이어에만 알림
@@ -466,7 +470,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 				continue;
 			other->vlm.lock();
 			if (i != new_key)
-				other->viewlist.insert(new_key);
+				other->viewlist.emplace(new_key);
 			other->vlm.unlock();
 			Server::getInstance()->SendPacket(i, &p);
 		}
@@ -485,7 +489,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 			p.x = g_clients[i]->x;
 			p.y = g_clients[i]->y;
 			newClient->vlm.lock();
-			newClient->viewlist.insert(i);
+			newClient->viewlist.emplace(i);
 			newClient->vlm.unlock();
 			WakeUpNPC(i);
 			Server::getInstance()->SendPacket(new_key, &p);
@@ -513,8 +517,9 @@ void Server::SearchClientID(BYTE* id, Client* client, int index)
 		}
 	}
 
-	DBEvent newEvent = DBEvent(SEARCH_ID, cID, client, index);
-	db_queue.push(newEvent);
+	//DBEvent newEvent = DBEvent(SEARCH_ID, cID, client, index);
+	//db_queue.push(newEvent);
+	db_queue.emplace(DBEvent(SEARCH_ID, cID, client, index));
 #else
 	AcceptNewClient(client, index);
 #endif
@@ -522,15 +527,8 @@ void Server::SearchClientID(BYTE* id, Client* client, int index)
 
 void Server::add_timer(int id, int type, float time)
 {
-	Event* now = new Event();
-	now->id = id;
-	now->time = time;
-	now->startClock = chrono::system_clock::now();
-	now->type = type;
-
 	tmp.lock();
-	//event_queue.push(now);
-	event_queue.push(now);
+	event_queue.emplace(new Event(id, time, type, chrono::system_clock::now()));
 	tmp.unlock();
 }
 
@@ -560,7 +558,7 @@ void Server::MoveNpc(int key)
 	default:
 		return;
 	}
-	int prev_x = g_clients[key]->zone_x;
+	/*int prev_x = g_clients[key]->zone_x;
 	int prev_y = g_clients[key]->zone_y;
 
 	g_clients[key]->zone_x = g_clients[key]->x / ZONE_INTERVAL;
@@ -569,7 +567,7 @@ void Server::MoveNpc(int key)
 	if (g_clients[key]->zone_x != prev_x || g_clients[key]->zone_y != prev_y) {
 		g_zone[prev_y][prev_x].erase(key);
 		g_zone[g_clients[key]->zone_y][g_clients[key]->zone_x].insert(key);
-	}
+	}*/
 
 	sc_packet_pos posPacket;
 	posPacket.id = key;
@@ -578,14 +576,19 @@ void Server::MoveNpc(int key)
 	posPacket.x = g_clients[key]->x;
 	posPacket.y = g_clients[key]->y;
 
-	unordered_set<int> new_viewList = ProcessNearZone(key);
-	
+
+	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
+
+	thisNPC->vlm.lock();
+	unordered_set<int> new_viewList = thisNPC->viewlist;
+	thisNPC->vlm.unlock();
+
 	for (auto& id : new_viewList) {
 		Client* target = reinterpret_cast<Client*>(g_clients[id]);
 		if (CanSee(key, id)) {
 			target->vlm.lock();
 			if (target->viewlist.count(key) == 0) {
-				target->viewlist.insert(key);
+				target->viewlist.emplace(key);
 				target->vlm.unlock();
 				SendPutObject(id, key);
 			}
@@ -689,8 +692,7 @@ void Server::UploadUserDatatoDB()
 		Client* client = reinterpret_cast<Client*>(g_clients[i]);
 		if (!client->is_use) continue;
 
-		DBEvent newEvent = DBEvent(UPDATE_POS, client->player_id, client, i);
-		db_queue.push(newEvent);
+		db_queue.emplace(DBEvent(UPDATE_POS, client->player_id, client, i));
 	}
 
 	add_timer(-1, DB_UPDATE_TYPE, 10);

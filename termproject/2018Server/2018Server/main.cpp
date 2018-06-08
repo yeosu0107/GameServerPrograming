@@ -106,7 +106,7 @@ void TimerThread() {
 			nowEvent->time -= duration.count();
 			Server::getInstance()->getMutex()->lock();
 			//event_queue->push(nowEvent);
-			event_queue->push(nowEvent);
+			event_queue->emplace(nowEvent);
 			Server::getInstance()->getMutex()->unlock();
 		}
 	}

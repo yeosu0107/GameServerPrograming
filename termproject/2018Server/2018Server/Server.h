@@ -11,6 +11,7 @@ const int NONE_TYPE = 0;
 const int MOVE_TYPE = 1;
 const int DB_UPDATE_TYPE = 2;
 
+
 struct Event {
 	int id;
 	float time;
@@ -18,6 +19,10 @@ struct Event {
 	chrono::system_clock::time_point startClock;
 
 	int target;
+	
+	Event(int _id, float _time, int _type, chrono::system_clock::time_point _Clock) :
+		id(_id), time(_time), type(_type), startClock(_Clock)
+	{}
 };
 
 struct DBEvent {
@@ -58,7 +63,7 @@ private:
 	mutex tmp;
 
 	vector<Object*> g_clients;
-	unordered_set<int> g_zone[10][10];
+	unordered_set<int> g_zone[11][11];
 
 	int(*g_collisionMap)[300];
 
