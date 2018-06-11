@@ -11,6 +11,7 @@ class Object {
 public:
 	bool is_use = false;
 	bool is_active = false;
+	bool ai_work = false;
 	int type = 0;
 	int x, y;
 
@@ -24,7 +25,7 @@ public:
 	unordered_set<int> viewlist;
 	int hp, mp;
 	ScriptEngine* aiScript;
-
+	
 	Npc() {}
 
 	Npc(int xPos, int yPos, ScriptEngine* ai)
@@ -37,6 +38,7 @@ public:
 		zone_y = y / ZONE_INTERVAL;
 
 		aiScript = ai;
+		ai_work = false;
 	}
 };
 
@@ -45,11 +47,14 @@ static const char EV_SEND = 1;
 static const char EV_MOVE = 2;
 static const char EV_DBUPDATE = 3;
 static const char EV_PLAYER_MOVE = 4;
+static const char EV_MOVE_DIR = 5;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;
 	char event_type;
 	int event_target;
+	int event_info;
+	int event_info2;
 	WSABUF wsabuf;
 	char io_buf[MAX_BUFF_SIZE];
 };
@@ -75,6 +80,7 @@ public:
 		prev_size = 0;
 
 		aiScript = nullptr;
+		ai_work = false;
 	}
 	Client(const Client& my) {
 		exover.event_type = EV_RECV;
@@ -84,6 +90,7 @@ public:
 		prev_size = 0;
 
 		aiScript = nullptr;
+		ai_work = false;
 	}
 };
 

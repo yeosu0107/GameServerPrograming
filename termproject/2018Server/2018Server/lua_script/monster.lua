@@ -14,6 +14,7 @@ function event_player_move(player)
 	if(player_x == my_x) then
 		if(player_y == my_y) then
 			API_send_msg(player, myid, "HELLO!")
+			API_npc_move(player, myid);
 		end
 	end
 end

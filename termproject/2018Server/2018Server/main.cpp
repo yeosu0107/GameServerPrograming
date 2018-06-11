@@ -46,8 +46,12 @@ void WorkerThread()
 			delete exover;
 		}
 		else if (exover->event_type == EV_PLAYER_MOVE) {
-			int player = exover->event_target;
-			Server::getInstance()->NPC_AI(key, player);
+			Server::getInstance()->NPC_AI((int)key, (int)exover->event_target);
+			delete exover;
+		}
+		else if (exover->event_type == EV_MOVE_DIR) {
+			Server::getInstance()->MoveDirNpc((int)key, exover->event_info2, exover->event_info, exover->event_target);
+			delete exover;
 		}
 		else {
 			//cout << "Unknown Event Error in Worker Thread\n";
@@ -98,6 +102,17 @@ void TimerThread() {
 			else if(nowEvent->type == DB_UPDATE_TYPE) {
 				EXOver* over = new EXOver();
 				over->event_type = EV_DBUPDATE;
+
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					0, nowEvent->id, &over->wsaover);
+			}
+			else if (nowEvent->type >= MOVE_UP_TYPE &&
+				nowEvent->type <= MOVE_RIGHT_TYPE) {
+				EXOver* over = new EXOver();
+				over->event_type = EV_MOVE_DIR;
+				over->event_target = nowEvent->target;
+				over->event_info = nowEvent->info;
+				over->event_info2 = nowEvent->type - 1;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);

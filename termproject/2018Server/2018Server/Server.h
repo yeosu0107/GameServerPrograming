@@ -9,7 +9,12 @@ using namespace std;
 
 const int NONE_TYPE = 0;
 const int MOVE_TYPE = 1;
-const int DB_UPDATE_TYPE = 2;
+const int MOVE_UP_TYPE = 2;
+const int MOVE_DOWN_TYPE = 3;
+const int MOVE_LEFT_TYPE = 4;
+const int MOVE_RIGHT_TYPE = 5;
+const int DB_UPDATE_TYPE = 6;
+
 
 
 struct Event {
@@ -19,9 +24,10 @@ struct Event {
 	chrono::system_clock::time_point startClock;
 
 	int target;
+	int info;
 	
-	Event(int _id, float _time, int _type, chrono::system_clock::time_point _Clock) :
-		id(_id), time(_time), type(_type), startClock(_Clock)
+	Event(int _id, int _target, int _info, float _time, int _type, chrono::system_clock::time_point _Clock) :
+		id(_id), target(_target), info(_info), time(_time), type(_type), startClock(_Clock)
 	{}
 };
 
@@ -91,8 +97,9 @@ public:
 	void AcceptNewClient(Client* client, int key);
 	void SearchClientID(BYTE* id, Client* client, int index);
 
-	void add_timer(int id, int type, float time);
+	void add_timer(int id, int target, int info, int type, float time);
 	void MoveNpc(int id);
+	void MoveDirNpc(int id, int dir, int count, int target);
 	void WakeUpNPC(int id);
 	void NPC_AI(int npc, int player);
 
@@ -111,3 +118,4 @@ public:
 int CAPI_getX(lua_State* L);
 int CAPI_getY(lua_State* L);
 int CAPI_sendMsg(lua_State* L);
+int CAPI_moveNPC(lua_State* L);

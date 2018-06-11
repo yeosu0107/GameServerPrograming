@@ -10,7 +10,7 @@
 #define MAX_USER 1000		//ID (0~9)
 
 #define NPC_START  1000		//NPC ID
-#define NUM_OF_NPC  21000		//유저 + NPC의 수
+#define NUM_OF_NPC  3000		//유저 + NPC의 수
 
 #define MY_SERVER_PORT  4000
 

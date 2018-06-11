@@ -49,6 +49,7 @@ void Server::Initialize()
 		lua_register(ai->getInstance(), "API_get_x", CAPI_getX);
 		lua_register(ai->getInstance(), "API_get_y", CAPI_getY);
 		lua_register(ai->getInstance(), "API_send_msg", CAPI_sendMsg);
+		lua_register(ai->getInstance(), "API_npc_move", CAPI_moveNPC);
 		g_clients.emplace_back(new Npc(xPos, yPos, ai));
 	}
 	cout << "Npc Info Initialize Complete" << endl;
@@ -302,7 +303,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 
 			//if (isNPC(id)) continue;
 
-			Client* target = reinterpret_cast<Client*>(g_clients[id]);
+			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
 			target->vlm.lock();
 			if (target->viewlist.count(clientID) == 0) {
 				target->viewlist.emplace(clientID);
@@ -321,7 +322,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 			//view에 계속 남아있는 객체 처리
 			//if (isNPC(id)) continue;
 
-			Client* target = reinterpret_cast<Client*>(g_clients[id]);
+			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
 			target->vlm.lock();
 			if (target->viewlist.count(clientID) == 0) {
 				target->viewlist.emplace(clientID);
@@ -348,7 +349,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 
 			//if (isNPC(id)) continue;
 
-			Client* target = reinterpret_cast<Client*>(g_clients[id]);
+			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
 			target->vlm.lock();
 			if (0 != target->viewlist.count(clientID)) {
 				target->viewlist.erase(clientID);
@@ -547,10 +548,10 @@ void Server::SearchClientID(BYTE* id, Client* client, int index)
 #endif
 }
 
-void Server::add_timer(int id, int type, float time)
+void Server::add_timer(int id, int target, int info, int type, float time)
 {
 	tmp.lock();
-	event_queue.emplace(new Event(id, time, type, chrono::system_clock::now()));
+	event_queue.emplace(new Event(id, target, info, time, type, chrono::system_clock::now()));
 	tmp.unlock();
 }
 
@@ -629,14 +630,105 @@ void Server::MoveNpc(int key)
 		}
 	}
 
-	if (!new_viewList.empty()) {
-		add_timer(key, MOVE_TYPE, 1);
+	if (!new_viewList.empty() && thisNPC->ai_work == false) {
+		add_timer(key, -1, -1, MOVE_TYPE, 1);
 	}
 	else {
 		g_clients[key]->is_active = false;
 		//thisNPC->vlm.lock();
-		thisNPC->viewlist.swap(*new unordered_set<int>());
+		//thisNPC->viewlist.swap(*new unordered_set<int>());
 		//thisNPC->vlm.unlock();
+	}
+}
+
+void Server::MoveDirNpc(int key, int dir, int count, int target)
+{
+	switch (dir) {
+	case CS_UP:
+		g_clients[key]->y -= 1;
+		if (g_clients[key]->y < 0)
+			g_clients[key]->y = 0;
+		break;
+	case CS_DOWN:
+		g_clients[key]->y += 1;
+		if (g_clients[key]->y >= BOARD_HEIGHT)
+			g_clients[key]->y = BOARD_HEIGHT - 1;
+		break;
+	case CS_LEFT:
+		g_clients[key]->x -= 1;
+		if (g_clients[key]->x < 0)
+			g_clients[key]->x = 0;
+		break;
+	case CS_RIGHT:
+		g_clients[key]->x += 1;
+		if (g_clients[key]->x >= BOARD_WIDTH)
+			g_clients[key]->x = BOARD_WIDTH - 1;
+		break;
+	default:
+		return;
+	}
+
+	sc_packet_pos posPacket;
+	posPacket.id = key;
+	posPacket.size = sizeof(sc_packet_pos);
+	posPacket.type = SC_POS;
+	posPacket.x = g_clients[key]->x;
+	posPacket.y = g_clients[key]->y;
+
+
+	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
+	thisNPC->ai_work = true;
+
+	thisNPC->vlm.lock();
+	unordered_set<int> new_viewList = thisNPC->viewlist;
+	thisNPC->vlm.unlock();
+
+	for (auto& id : new_viewList) {
+		Client* target = reinterpret_cast<Client*>(g_clients[id]);
+		if (CanSee(key, id)) {
+			target->vlm.lock();
+			if (target->viewlist.count(key) == 0) {
+				target->viewlist.emplace(key);
+				target->vlm.unlock();
+				SendPutObject(id, key);
+			}
+			else {
+				target->vlm.unlock();
+				SendPacket(id, &posPacket);
+			}
+		}
+		else {
+			if (target->viewlist.count(key) != 0) {
+				target->vlm.lock();
+				target->viewlist.erase(key);
+				target->vlm.unlock();
+				SendRemoveObject(id, key);
+			}
+		}
+	}
+
+	if (count - 1 >0) {
+		switch (dir)
+		{
+		case CS_UP:
+			add_timer(key, target, count - 1, MOVE_UP_TYPE, 1);
+			break;
+		case CS_DOWN:
+			add_timer(key, target, count - 1, MOVE_DOWN_TYPE, 1);
+			break;
+		case CS_RIGHT:
+			add_timer(key, target, count - 1, MOVE_RIGHT_TYPE, 1);
+			break;
+		case CS_LEFT:
+			add_timer(key, target, count - 1, MOVE_LEFT_TYPE, 1);
+			break;
+		}
+	}
+	else {
+		thisNPC->ai_work = false;
+		wchar_t tmp[4] = L"bye";
+		SendChatPacket(target, key, tmp);
+		add_timer(key, -1, -1, MOVE_TYPE, 2);
 	}
 }
 
@@ -648,7 +740,7 @@ void Server::WakeUpNPC(int id)
 		return;
 	
 	g_clients[id]->is_active = true; //CAS(&is_active, false, true)
-	add_timer(id, MOVE_TYPE, 1.0f);
+	add_timer(id, -1, -1, MOVE_TYPE, 1.0f);
 	
 }
 
@@ -726,7 +818,7 @@ void Server::UploadUserDatatoDB()
 		db_queue.emplace(DBEvent(UPDATE_POS, client->player_id, client, i));
 	}
 
-	add_timer(-1, DB_UPDATE_TYPE, 10);
+	add_timer(-1, -1, -1, DB_UPDATE_TYPE, 10);
 }
 
 int CAPI_getX(lua_State * L)
@@ -766,5 +858,29 @@ int CAPI_sendMsg(lua_State * L)
 	buf[MAX_STR_SIZE - 1] = (wchar_t)0;
 
 	Server::getInstance()->SendChatPacket(player, chatter, buf);
+	return 0;
+}
+
+int CAPI_moveNPC(lua_State * L)
+{
+	int npc = (int)lua_tointeger(L, -1);
+	int player = (int)lua_tointeger(L, -2);
+	Server::getInstance()->g_clients[npc]->ai_work = true;
+	lua_pop(L, 3);
+	int dir = rand() % 4 + 1;
+	switch (dir) {
+	case CS_UP:
+		Server::getInstance()->add_timer(npc, player, 3, MOVE_UP_TYPE, 1);
+		break;
+	case CS_DOWN:
+		Server::getInstance()->add_timer(npc, player, 3, MOVE_DOWN_TYPE, 1);
+		break;
+	case CS_RIGHT:
+		Server::getInstance()->add_timer(npc, player, 3, MOVE_RIGHT_TYPE, 1);
+		break;
+	case CS_LEFT:
+		Server::getInstance()->add_timer(npc, player, 3, MOVE_LEFT_TYPE, 1);
+		break;
+	}
 	return 0;
 }
