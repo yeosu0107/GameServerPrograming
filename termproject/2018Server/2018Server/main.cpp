@@ -45,6 +45,10 @@ void WorkerThread()
 			Server::getInstance()->UploadUserDatatoDB();
 			delete exover;
 		}
+		else if (exover->event_type == EV_PLAYER_MOVE) {
+			int player = exover->event_target;
+			Server::getInstance()->NPC_AI(key, player);
+		}
 		else {
 			//cout << "Unknown Event Error in Worker Thread\n";
 		}

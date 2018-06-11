@@ -62,13 +62,15 @@ private:
 	queue<DBEvent> db_queue;
 	mutex tmp;
 
-	vector<Object*> g_clients;
+	
 	unordered_set<int> g_zone[11][11];
 
-	int(*g_collisionMap)[300];
+	int (*g_collisionMap)[300];
 
 	bool isNPC(int index);
 public:
+	vector<Object*> g_clients;
+
 	~Server();
 	static Server* getInstance();
 
@@ -81,6 +83,7 @@ public:
 	void SendPacket(int id, void* packet);
 	void SendPutObject(int client, int object);
 	void SendRemoveObject(int client, int object);
+	void SendChatPacket(int to, int from, wchar_t* msg);
 	void DisconnectPlayer(int id);
 	void ProcessPacket(int clientID, char* packet);
 
@@ -91,6 +94,7 @@ public:
 	void add_timer(int id, int type, float time);
 	void MoveNpc(int id);
 	void WakeUpNPC(int id);
+	void NPC_AI(int npc, int player);
 
 	Object* getClient(int id);
 	HANDLE* getIOCP();
@@ -100,4 +104,10 @@ public:
 	void recv(unsigned long long& key, unsigned long& data_size, EXOver* exover);
 
 	void UploadUserDatatoDB();
+
+	
 };
+
+int CAPI_getX(lua_State* L);
+int CAPI_getY(lua_State* L);
+int CAPI_sendMsg(lua_State* L);

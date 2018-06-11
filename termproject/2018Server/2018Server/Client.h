@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "protocol.h"
+#include "ScriptEngine.h"
 
 using namespace std;
 
@@ -22,10 +23,11 @@ public:
 	mutex vlm;
 	unordered_set<int> viewlist;
 	int hp, mp;
+	ScriptEngine* aiScript;
 
 	Npc() {}
 
-	Npc(int xPos, int yPos)
+	Npc(int xPos, int yPos, ScriptEngine* ai)
 	{
 		x = xPos;
 		y = yPos;
@@ -33,6 +35,8 @@ public:
 		is_active = false;
 		zone_x = x / ZONE_INTERVAL;
 		zone_y = y / ZONE_INTERVAL;
+
+		aiScript = ai;
 	}
 };
 
@@ -40,10 +44,12 @@ static const char EV_RECV = 0;
 static const char EV_SEND = 1;
 static const char EV_MOVE = 2;
 static const char EV_DBUPDATE = 3;
+static const char EV_PLAYER_MOVE = 4;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;
 	char event_type;
+	int event_target;
 	WSABUF wsabuf;
 	char io_buf[MAX_BUFF_SIZE];
 };
@@ -67,6 +73,8 @@ public:
 		exover.wsabuf.len = sizeof(exover.io_buf);
 		packet_size = 0;
 		prev_size = 0;
+
+		aiScript = nullptr;
 	}
 	Client(const Client& my) {
 		exover.event_type = EV_RECV;
@@ -74,6 +82,8 @@ public:
 		exover.wsabuf.len = sizeof(exover.io_buf);
 		packet_size = 0;
 		prev_size = 0;
+
+		aiScript = nullptr;
 	}
 };
 

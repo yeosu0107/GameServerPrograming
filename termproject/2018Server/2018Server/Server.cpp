@@ -32,20 +32,26 @@ void Server::Initialize()
 	//g_collisionMap = mapFile.getCollisionMap();
 
 	//g_clients.resize(NUM_OF_NPC, new Client());
+	wcout.imbue(locale("korean"));
 	for (int i = 0; i < NPC_START; ++i) {
 		Client* client = new Client();
 		g_clients.emplace_back(client);
 	}
-	wcout.imbue(locale("korean"));
+	cout << "Player Info Initialize Complete" << endl;
 	srand((unsigned)time(NULL));
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
 		int xPos = rand() % BOARD_WIDTH;
 		int yPos = rand() % BOARD_HEIGHT;
 
 		g_zone[yPos / ZONE_INTERVAL][xPos/ZONE_INTERVAL].emplace(i);
-		g_clients.emplace_back(new Npc(xPos, yPos));
+
+		ScriptEngine* ai = new ScriptEngine("lua_script\\monster.lua", i);
+		lua_register(ai->getInstance(), "API_get_x", CAPI_getX);
+		lua_register(ai->getInstance(), "API_get_y", CAPI_getY);
+		lua_register(ai->getInstance(), "API_send_msg", CAPI_sendMsg);
+		g_clients.emplace_back(new Npc(xPos, yPos, ai));
 	}
-	
+	cout << "Npc Info Initialize Complete" << endl;
 
 	WSADATA	wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
@@ -54,7 +60,7 @@ void Server::Initialize()
 #ifdef DB
 	UploadUserDatatoDB();
 #endif
-	cout << "Server Initialize Complete" << endl;
+	cout << "Server Initialize Success" << endl;
 }
 
 bool Server::CanSee(int cl1, int cl2) {
@@ -73,6 +79,11 @@ void Server::addViewList(unordered_set<int>& viewList, const int clientID, const
 			if (!g_clients[i]->is_use) continue;
 			if (!CanSee(clientID, i)) continue;
 			viewList.emplace(i);
+
+			EXOver* exover = new EXOver;
+			exover->event_type = EV_PLAYER_MOVE;
+			exover->event_target = clientID;
+			PostQueuedCompletionStatus(g_iocp, 1, i, &exover->wsaover);
 		}
 	}
 	else {
@@ -171,6 +182,17 @@ void Server::SendRemoveObject(int client, int object) {
 	p.type = SC_REMOVE_PLAYER;
 
 	SendPacket(client, &p);
+}
+
+void Server::SendChatPacket(int to, int from, wchar_t * msg)
+{
+	sc_packet_chat p;
+	p.id = from;
+	p.size = sizeof(p);
+	p.type = SC_CHAT;
+	wcscpy_s(p.message, msg);
+
+	SendPacket(to, &p);
 }
 
 void Server::DisconnectPlayer(int id) {
@@ -630,6 +652,12 @@ void Server::WakeUpNPC(int id)
 	
 }
 
+void Server::NPC_AI(int npc, int player)
+{
+	Npc* AI = reinterpret_cast<Npc*>(g_clients[npc]);
+	AI->aiScript->eventPlayerMove(player);
+}
+
 Object * Server::getClient(int id)
 {
 	return g_clients[id];
@@ -699,4 +727,44 @@ void Server::UploadUserDatatoDB()
 	}
 
 	add_timer(-1, DB_UPDATE_TYPE, 10);
+}
+
+int CAPI_getX(lua_State * L)
+{
+	int player = (int)lua_tointeger(L, -1);
+	lua_pop(L, 2);
+	int x = Server::getInstance()->g_clients[player]->x;
+	lua_pushnumber(L, x);
+
+	return 1;
+}
+
+int CAPI_getY(lua_State * L)
+{
+	int player = (int)lua_tointeger(L, -1);
+	lua_pop(L, 2);
+	int y = Server::getInstance()->g_clients[player]->y;
+	lua_pushnumber(L, y);
+
+	return 1;
+}
+
+int CAPI_sendMsg(lua_State * L)
+{
+	char* msg = (char*)lua_tostring(L, -1);
+	int chatter = (int)lua_tointeger(L, -2);
+	int player = (int)lua_tointeger(L, -3);
+	lua_pop(L, 3);
+
+	wchar_t buf[MAX_STR_SIZE];
+	size_t len = strlen(msg);
+	if (len >= MAX_STR_SIZE)
+		len = MAX_STR_SIZE - 1;
+
+	size_t wlen;
+	mbstowcs_s(&wlen, buf, len, msg, _TRUNCATE);
+	buf[MAX_STR_SIZE - 1] = (wchar_t)0;
+
+	Server::getInstance()->SendChatPacket(player, chatter, buf);
+	return 0;
 }

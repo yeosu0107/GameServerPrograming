@@ -25,6 +25,12 @@
     <Filter Include="Collision">
       <UniqueIdentifier>{bc37a06f-ca75-42e6-a697-25e8e4bf9ec7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lua">
+      <UniqueIdentifier>{e349bcd2-68f5-4e4f-aa13-c512bbcb8c08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lua\script">
+      <UniqueIdentifier>{2edf5b93-ccab-470b-b1ed-6ea3e9ecd43d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -47,6 +53,9 @@
     </ClCompile>
     <ClCompile Include="CollisionMap.cpp">
       <Filter>Collision</Filter>
+    </ClCompile>
+    <ClCompile Include="ScriptEngine.cpp">
+      <Filter>lua</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -71,5 +80,25 @@
     <ClInclude Include="CollisionMap.h">
       <Filter>Collision</Filter>
     </ClInclude>
+    <ClInclude Include="lua\lauxlib.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="lua\lua.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="lua\luaconf.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="lua\lualib.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptEngine.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="lua_script\monster.lua">
+      <Filter>lua\script</Filter>
+    </None>
   </ItemGroup>
 </Project>
