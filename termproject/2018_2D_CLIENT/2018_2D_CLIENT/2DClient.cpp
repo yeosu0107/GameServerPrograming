@@ -88,6 +88,10 @@ DWORD		in_packet_size = 0;
 int		saved_packet_size = 0;
 int		g_myid;
 
+int g_myexp = 0;
+int g_myhp = 0;
+int g_mylevel = 0;
+
 int		g_left_x = 0;
 int     g_top_y = 0;
 
@@ -189,6 +193,14 @@ void ProcessPacket(char *ptr)
 		cout << "접속을 종료합니다" << endl;
 		exit(0);
 		break;
+	case SC_PLAYER_STAT:
+	{
+		sc_packet_stat * myPacket = reinterpret_cast<sc_packet_stat*>(ptr);
+		g_myexp = myPacket->exp;
+		g_mylevel = myPacket->level;
+		g_myhp = myPacket->hp;
+		break;
+	}
 	default:
 		printf("Unknown PACKET type [%d]\n", ptr[1]);
 	}
@@ -590,7 +602,7 @@ int Game_Main(void *parms)
 
 	// draw some text
 	wchar_t text[300];
-	wsprintf(text, L"MY POSITION (%3d, %3d)", player.x, player.y);
+	wsprintf(text, L"Level : %2d HP : %3d exp : %3d  POS (%3d, %3d)", g_mylevel, g_myhp, g_myexp, player.x, player.y);
 	Draw_Text_D3D(text, 10, screen_height - 64, D3DCOLOR_ARGB(255, 255, 255, 255));
 	//Draw_Text_D3D(g_message, 10, screen_height - 128, D3DCOLOR_ARGB(255, color_r, color_g, color_b));
 	logMsg->draw();

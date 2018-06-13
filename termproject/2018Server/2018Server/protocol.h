@@ -30,6 +30,7 @@
 #define SC_CHAT			4
 #define SC_DUPLICATON_PLAYER 5
 #define SC_ATTACK 6
+#define SC_PLAYER_STAT 7
 
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
@@ -90,4 +91,17 @@ struct sc_packet_chat {
 	WCHAR message[MAX_STR_SIZE];
 };
 
+struct sc_packet_login {
+	BYTE size;
+	BYTE type;
+	WCHAR char_str[100];
+};
+
+struct sc_packet_stat {
+	BYTE size;
+	BYTE type;
+	WORD hp;
+	WORD level;
+	DWORD exp;
+};
 #pragma pack (pop)

@@ -13,9 +13,9 @@ public:
 	bool is_active = false;
 	bool ai_work = false;
 	int type = 0;
-	int level = 5;
 	int x, y;
-	int hp, mp;
+	int level = 5;
+	int hp = 100;
 	int zone_x, zone_y;
 };
 
@@ -61,15 +61,15 @@ struct EXOver {
 
 class Client : public Npc {
 public:
-	//unordered_set<int> viewlist;
-	//mutex vlm;
-	
 	int player_id;
+	
+	int exp = 10;
 	//for io func
 	SOCKET s;
 	EXOver exover;
 	int packet_size;
 	int prev_size;
+	
 	char prev_packet[MAX_PACKET_SIZE];
 
 	Client() {

@@ -211,6 +211,20 @@ void Server::SendChatPacket(int to, int from, const wchar_t * msg)
 	SendPacket(to, &p);
 }
 
+void Server::SendStatPacket(int id)
+{
+	Client* client = reinterpret_cast<Client*>(g_clients[id]);
+
+	sc_packet_stat p;
+	p.size = sizeof(p);
+	p.type = SC_PLAYER_STAT;
+	p.exp = client->exp;
+	p.hp = client->hp;
+	p.level = client->level;
+
+	SendPacket(id, &p);
+}
+
 void Server::DisconnectPlayer(int id) {
 	Client* now = reinterpret_cast<Client*>(g_clients[id]);
 
@@ -545,6 +559,8 @@ void Server::AcceptNewClient(Client* client, int new_key)
 			Server::getInstance()->SendPacket(new_key, &p);
 		}
 	}
+
+	SendStatPacket(new_key); //플레이어 스텟 전송
 }
 
 void Server::SearchClientID(BYTE* id, Client* client, int index)
