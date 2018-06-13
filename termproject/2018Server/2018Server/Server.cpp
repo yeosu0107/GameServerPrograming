@@ -297,7 +297,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		client->vlm.lock();
 		if (client->viewlist.count(id) == 0) {
 			client->viewlist.emplace(id);
-			WakeUpNPC(id);
+			//WakeUpNPC(id);
 			client->vlm.unlock();
 			SendPutObject(clientID, id);
 
@@ -514,7 +514,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 			newClient->vlm.lock();
 			newClient->viewlist.emplace(i);
 			newClient->vlm.unlock();
-			WakeUpNPC(i);
+			//WakeUpNPC(i);
 			Server::getInstance()->SendPacket(new_key, &p);
 		}
 	}
@@ -557,6 +557,10 @@ void Server::add_timer(int id, int target, int info, int type, float time)
 
 void Server::MoveNpc(int key)
 {
+	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
+	/*if (thisNPC->ai_work)
+		return;*/
+
 	switch (rand()%4 + 1) {
 	case CS_UP:
 		g_clients[key]->y -= 1;
@@ -600,8 +604,7 @@ void Server::MoveNpc(int key)
 	posPacket.y = g_clients[key]->y;
 
 
-	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
-
+	
 	thisNPC->vlm.lock();
 	unordered_set<int> new_viewList = thisNPC->viewlist;
 	thisNPC->vlm.unlock();
@@ -728,7 +731,7 @@ void Server::MoveDirNpc(int key, int dir, int count, int target)
 		thisNPC->ai_work = false;
 		wchar_t tmp[4] = L"bye";
 		SendChatPacket(target, key, tmp);
-		add_timer(key, -1, -1, MOVE_TYPE, 2);
+		//add_timer(key, -1, -1, MOVE_TYPE, 2);
 	}
 }
 
