@@ -1,3 +1,4 @@
+#include <string>
 #include "stdafx.h"
 #include "Server.h"
 #include "CollisionMap.h"
@@ -28,8 +29,8 @@ Server * Server::getInstance()
 
 void Server::Initialize()
 {
-	//CollisionMap mapFile;
-	//g_collisionMap = mapFile.getCollisionMap();
+	CollisionMap mapFile;
+	g_collisionMap = mapFile.getCollisionMap();
 
 	//g_clients.resize(NUM_OF_NPC, new Client());
 	wcout.imbue(locale("korean"));
@@ -145,6 +146,20 @@ unordered_set<int> Server::ProcessNearZone(int key)
 	return new_viewList;
 }
 
+bool Server::checkCollisionMap(int index)
+{
+	if (g_collisionMap[g_clients[index]->y][g_clients[index]->x] != -1)
+		return true;
+	return false;
+}
+
+bool Server::checkCollisionMap(int x, int y)
+{
+	if (g_collisionMap[y][x] != -1)
+		return true;
+	return false;
+}
+
 void Server::SendPacket(int id, void* packet) {
 	EXOver* over = new EXOver;
 	unsigned char* p = reinterpret_cast<unsigned char*>(packet);
@@ -185,7 +200,7 @@ void Server::SendRemoveObject(int client, int object) {
 	SendPacket(client, &p);
 }
 
-void Server::SendChatPacket(int to, int from, wchar_t * msg)
+void Server::SendChatPacket(int to, int from, const wchar_t * msg)
 {
 	sc_packet_chat p;
 	p.id = from;
@@ -240,7 +255,8 @@ void Server::DisconnectPlayer(int id) {
 void Server::ProcessPacket(int clientID, char* packet) {
 	cs_packet_up* p = reinterpret_cast<cs_packet_up*>(packet);
 	Client* client = reinterpret_cast<Client*>(g_clients[clientID]);
-
+	int origin_x = client->x;
+	int origin_y = client->y;
 	switch (p->type) {
 	case CS_UP:
 		client->y -= 1;
@@ -266,113 +282,124 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		client->x = rand() % BOARD_WIDTH;
 		client->y = rand() % BOARD_HEIGHT;
 		break;
+	case CS_ATTACK:
+		printf("recv attack message : player %d\n", clientID);
+		break;
 	default:
 		//cout << "Unknown Protocol from Client [" << clientID << "]\n";
 		return;
 	}
-	int prev_x = client->zone_x;
-	int prev_y = client->zone_y;
+	if (p->type < CS_ATTACK) {
+		if (checkCollisionMap(clientID)) {
+			client->x = origin_x;
+			client->y = origin_y;
+		}
+		int prev_x = client->zone_x;
+		int prev_y = client->zone_y;
 
-	client->zone_x = client->x / ZONE_INTERVAL;
-	client->zone_y = client->y / ZONE_INTERVAL;
+		client->zone_x = client->x / ZONE_INTERVAL;
+		client->zone_y = client->y / ZONE_INTERVAL;
 
-	if (client->zone_x != prev_x || client->zone_y != prev_y) {
-		g_zone[prev_y][prev_x].erase(clientID);
-		g_zone[client->zone_y][client->zone_x].emplace(clientID);
-	}
+		if (client->zone_x != prev_x || client->zone_y != prev_y) {
+			g_zone[prev_y][prev_x].erase(clientID);
+			g_zone[client->zone_y][client->zone_x].emplace(clientID);
+		}
 
-	client->type = 0;
-	sc_packet_pos posPacket;
-	posPacket.id = clientID;
-	posPacket.size = sizeof(sc_packet_pos);
-	posPacket.type = SC_POS;
-	posPacket.x = client->x;
-	posPacket.y = client->y;
+		client->type = 0;
+		sc_packet_pos posPacket;
+		posPacket.id = clientID;
+		posPacket.size = sizeof(sc_packet_pos);
+		posPacket.type = SC_POS;
+		posPacket.x = client->x;
+		posPacket.y = client->y;
 
-	unordered_set<int> new_viewList;// = ProcessNearZone(clientID);
-	new_viewList.swap(*&ProcessNearZone(clientID));
+		unordered_set<int> new_viewList;// = ProcessNearZone(clientID);
+		new_viewList.swap(*&ProcessNearZone(clientID));
 
-	for (auto& id : new_viewList) {
-		//새로 viewlist에 들어오는 객체 처리
-		client->vlm.lock();
-		if (client->viewlist.count(id) == 0) {
-			client->viewlist.emplace(id);
-			//WakeUpNPC(id);
-			client->vlm.unlock();
-			SendPutObject(clientID, id);
+		for (auto& id : new_viewList) {
+			//새로 viewlist에 들어오는 객체 처리
+			client->vlm.lock();
+			if (client->viewlist.count(id) == 0) {
+				client->viewlist.emplace(id);
+				//WakeUpNPC(id);
+				client->vlm.unlock();
+				SendPutObject(clientID, id);
 
-			//if (isNPC(id)) continue;
+				//if (isNPC(id)) continue;
 
-			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
-			target->vlm.lock();
-			if (target->viewlist.count(clientID) == 0) {
-				target->viewlist.emplace(clientID);
-				target->vlm.unlock();
-				if (isNPC(id)) continue;
-				SendPutObject(id, clientID);
+				Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
+				target->vlm.lock();
+				if (target->viewlist.count(clientID) == 0) {
+					target->viewlist.emplace(clientID);
+					target->vlm.unlock();
+					if (isNPC(id)) continue;
+					SendPutObject(id, clientID);
+				}
+				else {
+					target->vlm.unlock();
+					if (isNPC(id)) continue;
+					SendPacket(id, &posPacket);
+				}
 			}
 			else {
-				target->vlm.unlock();
-				if (isNPC(id)) continue;
-				SendPacket(id, &posPacket);
+				client->vlm.unlock();
+				//view에 계속 남아있는 객체 처리
+				//if (isNPC(id)) continue;
+
+				Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
+				target->vlm.lock();
+				if (target->viewlist.count(clientID) == 0) {
+					target->viewlist.emplace(clientID);
+					target->vlm.unlock();
+					if (isNPC(id)) continue;
+					SendPutObject(id, clientID);
+				}
+				else {
+					target->vlm.unlock();
+					if (isNPC(id)) continue;
+					SendPacket(id, &posPacket);
+				}
 			}
 		}
-		else {
-			client->vlm.unlock();
-			//view에 계속 남아있는 객체 처리
-			//if (isNPC(id)) continue;
 
-			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
-			target->vlm.lock();
-			if (target->viewlist.count(clientID) == 0) {
-				target->viewlist.emplace(clientID);
-				target->vlm.unlock();
-				if (isNPC(id)) continue;
-				SendPutObject(id, clientID);
-			}
-			else {
-				target->vlm.unlock();
-				if (isNPC(id)) continue;
-				SendPacket(id, &posPacket);
-			}
-		}
-	}
-
-	//viewlist에서 나가는 객체 처리
-	vector<int> tmpDeleteList;
-	client->vlm.lock();
-	unordered_set<int> old_vl = client->viewlist;
-	client->vlm.unlock();
-	for (auto& id : old_vl) {
-		if (0 == new_viewList.count(id)) {
-			tmpDeleteList.emplace_back(id);
-
-			//if (isNPC(id)) continue;
-
-			Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
-			target->vlm.lock();
-			if (0 != target->viewlist.count(clientID)) {
-				target->viewlist.erase(clientID);
-				target->vlm.unlock();
-				if (isNPC(id)) continue;
-				SendRemoveObject(id, clientID);
-			}
-			else
-				target->vlm.unlock();
-
-		}
-	}
-
-
-	for (auto& delid : tmpDeleteList) {
+		//viewlist에서 나가는 객체 처리
+		vector<int> tmpDeleteList;
 		client->vlm.lock();
-		client->viewlist.erase(delid);
+		unordered_set<int> old_vl = client->viewlist;
 		client->vlm.unlock();
-		SendRemoveObject(clientID, delid);
+		for (auto& id : old_vl) {
+			if (0 == new_viewList.count(id)) {
+				tmpDeleteList.emplace_back(id);
+
+				//if (isNPC(id)) continue;
+
+				Npc* target = reinterpret_cast<Npc*>(g_clients[id]);
+				target->vlm.lock();
+				if (0 != target->viewlist.count(clientID)) {
+					target->viewlist.erase(clientID);
+					target->vlm.unlock();
+					if (isNPC(id)) continue;
+					SendRemoveObject(id, clientID);
+				}
+				else
+					target->vlm.unlock();
+
+			}
+		}
+
+
+		for (auto& delid : tmpDeleteList) {
+			client->vlm.lock();
+			client->viewlist.erase(delid);
+			client->vlm.unlock();
+			SendRemoveObject(clientID, delid);
+		}
+
+		SendPacket(clientID, &posPacket);
 	}
-
-	SendPacket(clientID, &posPacket);
-
+	else {
+		PlayerAttack(clientID);
+	}
 }
 
 void Server::AcceptAndSearchClient(SOCKET & g_socket)
@@ -634,7 +661,7 @@ void Server::MoveNpc(int key)
 	}
 
 	if (!new_viewList.empty() && thisNPC->ai_work == false) {
-		add_timer(key, -1, -1, MOVE_TYPE, 1);
+		add_timer(key, -1, -1, MOVE_AROUND_TYPE, 1);
 	}
 	else {
 		g_clients[key]->is_active = false;
@@ -644,32 +671,57 @@ void Server::MoveNpc(int key)
 	}
 }
 
-void Server::MoveDirNpc(int key, int dir, int count, int target)
+void Server::MoveDirNpc(int key, int target)
 {
-	switch (dir) {
-	case CS_UP:
-		g_clients[key]->y -= 1;
-		if (g_clients[key]->y < 0)
-			g_clients[key]->y = 0;
-		break;
-	case CS_DOWN:
-		g_clients[key]->y += 1;
-		if (g_clients[key]->y >= BOARD_HEIGHT)
-			g_clients[key]->y = BOARD_HEIGHT - 1;
-		break;
-	case CS_LEFT:
-		g_clients[key]->x -= 1;
-		if (g_clients[key]->x < 0)
-			g_clients[key]->x = 0;
-		break;
-	case CS_RIGHT:
-		g_clients[key]->x += 1;
-		if (g_clients[key]->x >= BOARD_WIDTH)
-			g_clients[key]->x = BOARD_WIDTH - 1;
-		break;
-	default:
-		return;
+	int dir_x = g_clients[target]->x - g_clients[key]->x;
+	int dir_y = g_clients[target]->y - g_clients[key]->y;
+	int move_x = -1, move_y = -1;
+	if (dir_x >= dir_y) {
+		if (dir_x != 0) {
+			if (dir_x > 0)
+				move_x = g_clients[key]->x + 1;
+			else
+				move_x = g_clients[key]->x - 1;
+			if (checkCollisionMap(move_x, g_clients[key]->y))
+				move_x = g_clients[key]->x;
+			else
+				move_y = g_clients[key]->y;
+		}
+		else if (dir_y != 0 && move_y == -1) {
+			if (dir_y > 0)
+				move_y = g_clients[key]->y + 1;
+			else
+				move_y = g_clients[key]->y - 1;
+			if (checkCollisionMap(g_clients[key]->x, move_y))
+				move_y = g_clients[key]->y;
+			else
+				move_x = g_clients[key]->x;
+		}
 	}
+	else {
+		if (dir_y != 0) {
+			if (dir_y > 0)
+				move_y = g_clients[key]->y + 1;
+			else
+				move_y = g_clients[key]->y - 1;
+			if (checkCollisionMap(g_clients[key]->x, move_y))
+				move_y = g_clients[key]->y;
+			else
+				move_x = g_clients[key]->x;
+		}
+		else if (dir_x != 0 && move_x == -1) {
+			if (dir_x > 0)
+				move_x = g_clients[key]->x + 1;
+			else
+				move_x = g_clients[key]->x - 1;
+			if (checkCollisionMap(move_x, g_clients[key]->y))
+				move_x = g_clients[key]->x;
+			else
+				move_y = g_clients[key]->y;
+		}
+	}
+	if(move_x != -1) g_clients[key]->x = move_x;
+	if(move_y != -1) g_clients[key]->y = move_y;
 
 	sc_packet_pos posPacket;
 	posPacket.id = key;
@@ -709,30 +761,24 @@ void Server::MoveDirNpc(int key, int dir, int count, int target)
 			}
 		}
 	}
-
-	if (count - 1 >0) {
-		switch (dir)
-		{
-		case CS_UP:
-			add_timer(key, target, count - 1, MOVE_UP_TYPE, 1);
-			break;
-		case CS_DOWN:
-			add_timer(key, target, count - 1, MOVE_DOWN_TYPE, 1);
-			break;
-		case CS_RIGHT:
-			add_timer(key, target, count - 1, MOVE_RIGHT_TYPE, 1);
-			break;
-		case CS_LEFT:
-			add_timer(key, target, count - 1, MOVE_LEFT_TYPE, 1);
-			break;
-		}
+	dir_x = g_clients[target]->x - g_clients[key]->x;
+	dir_y = g_clients[target]->y - g_clients[key]->y;
+	if ((dir_x <= 1 && dir_x >= -1) && (dir_y <= 1 && dir_y >= -1)) {
+		//플레이어 공격
+		wchar_t tmp[7] = L"attack";
+		SendChatPacket(target, key, tmp);
+		g_clients[key]->ai_work = false;
 	}
 	else {
-		thisNPC->ai_work = false;
-		wchar_t tmp[4] = L"bye";
-		SendChatPacket(target, key, tmp);
-		//add_timer(key, -1, -1, MOVE_TYPE, 2);
+		add_timer(key, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
 	}
+	
+	//else {
+	//	thisNPC->ai_work = false;
+	//	wchar_t tmp[4] = L"bye";
+	//	SendChatPacket(target, key, tmp);
+	//	//add_timer(key, -1, -1, MOVE_TYPE, 2);
+	//}
 }
 
 void Server::WakeUpNPC(int id)
@@ -743,14 +789,15 @@ void Server::WakeUpNPC(int id)
 		return;
 	
 	g_clients[id]->is_active = true; //CAS(&is_active, false, true)
-	add_timer(id, -1, -1, MOVE_TYPE, 1.0f);
+	add_timer(id, -1, -1, MOVE_AROUND_TYPE, 1.0f);
 	
 }
 
 void Server::NPC_AI(int npc, int player)
 {
 	Npc* AI = reinterpret_cast<Npc*>(g_clients[npc]);
-	AI->aiScript->eventPlayerMove(player);
+	if(AI->ai_work == false)
+		AI->aiScript->eventPlayerMove(player);
 }
 
 Object * Server::getClient(int id)
@@ -824,6 +871,40 @@ void Server::UploadUserDatatoDB()
 	add_timer(-1, -1, -1, DB_UPDATE_TYPE, 10);
 }
 
+bool Server::nearArea(int id, int target)
+{
+	int dir_x = g_clients[id]->x - g_clients[target]->x;
+	int dir_y = g_clients[id]->y - g_clients[target]->y;
+
+	if (dir_x <= 1 && dir_x >= -1)
+		if (dir_y <= 1 && dir_y >= -1)
+			return true;
+	return false;
+}
+
+string hitMsg = "The Player hit the monster (damage : ";
+
+void Server::PlayerAttack(int id)
+{
+	Client* player = reinterpret_cast<Client*>(g_clients[id]);
+	player->vlm.lock();
+	unordered_set<int> nearList = player->viewlist;
+	player->vlm.unlock();
+	char damage = g_clients[id]->level * 3;
+	int i = 0;
+	for (auto& npc : nearList) {
+		if (nearArea(id, npc) == true) {
+			g_clients[npc]->hp -= damage;
+			string msg = hitMsg + to_string(damage) + ")";
+			wstring wide_string;
+			wide_string.assign(msg.begin(), msg.end());
+			i++;
+			SendChatPacket(id, id, wide_string.c_str());
+		}
+	}
+	printf("%d\n", i);
+}
+
 int CAPI_getX(lua_State * L)
 {
 	int player = (int)lua_tointeger(L, -1);
@@ -870,20 +951,6 @@ int CAPI_moveNPC(lua_State * L)
 	int player = (int)lua_tointeger(L, -2);
 	Server::getInstance()->g_clients[npc]->ai_work = true;
 	lua_pop(L, 3);
-	int dir = rand() % 4 + 1;
-	switch (dir) {
-	case CS_UP:
-		Server::getInstance()->add_timer(npc, player, 3, MOVE_UP_TYPE, 1);
-		break;
-	case CS_DOWN:
-		Server::getInstance()->add_timer(npc, player, 3, MOVE_DOWN_TYPE, 1);
-		break;
-	case CS_RIGHT:
-		Server::getInstance()->add_timer(npc, player, 3, MOVE_RIGHT_TYPE, 1);
-		break;
-	case CS_LEFT:
-		Server::getInstance()->add_timer(npc, player, 3, MOVE_LEFT_TYPE, 1);
-		break;
-	}
+	Server::getInstance()->add_timer(npc, player, -1, MOVE_DIR_TYPE, 1);
 	return 0;
 }

@@ -13,8 +13,9 @@ public:
 	bool is_active = false;
 	bool ai_work = false;
 	int type = 0;
+	int level = 5;
 	int x, y;
-
+	int hp, mp;
 	int zone_x, zone_y;
 };
 
@@ -23,7 +24,7 @@ public:
 	bool is_live;
 	mutex vlm;
 	unordered_set<int> viewlist;
-	int hp, mp;
+	
 	ScriptEngine* aiScript;
 	
 	Npc() {}
@@ -54,7 +55,6 @@ struct EXOver {
 	char event_type;
 	int event_target;
 	int event_info;
-	int event_info2;
 	WSABUF wsabuf;
 	char io_buf[MAX_BUFF_SIZE];
 };

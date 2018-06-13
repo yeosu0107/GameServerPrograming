@@ -83,13 +83,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\2018Server\2018Server\protocol.h" />
+    <ClInclude Include="Effect.h" />
     <ClInclude Include="gpdumb1.h" />
     <ClInclude Include="mapObject.h" />
+    <ClInclude Include="textManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2DClient.cpp" />
+    <ClCompile Include="Effect.cpp" />
     <ClCompile Include="gpdumb1.cpp" />
     <ClCompile Include="mapObject.cpp" />
+    <ClCompile Include="textManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="chess2.png" />

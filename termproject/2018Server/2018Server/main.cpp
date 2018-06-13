@@ -50,7 +50,7 @@ void WorkerThread()
 			delete exover;
 		}
 		else if (exover->event_type == EV_MOVE_DIR) {
-			Server::getInstance()->MoveDirNpc((int)key, exover->event_info2, exover->event_info, exover->event_target);
+			Server::getInstance()->MoveDirNpc((int)key, (int)exover->event_target);
 			delete exover;
 		}
 		else {
@@ -92,7 +92,7 @@ void TimerThread() {
 		Server::getInstance()->getMutex()->unlock();
 		chrono::duration<double> duration = chrono::system_clock::now() - nowEvent->startClock;
 		if (duration.count() > nowEvent->time) {
-			if (nowEvent->type == MOVE_TYPE) {
+			if (nowEvent->type == MOVE_AROUND_TYPE) {
 				EXOver* over = new EXOver();
 				over->event_type = EV_MOVE;
 
@@ -106,13 +106,11 @@ void TimerThread() {
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
 			}
-			else if (nowEvent->type >= MOVE_UP_TYPE &&
-				nowEvent->type <= MOVE_RIGHT_TYPE) {
+			else if (nowEvent->type == MOVE_DIR_TYPE) {
 				EXOver* over = new EXOver();
 				over->event_type = EV_MOVE_DIR;
 				over->event_target = nowEvent->target;
 				over->event_info = nowEvent->info;
-				over->event_info2 = nowEvent->type - 1;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);

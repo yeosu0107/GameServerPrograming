@@ -19,6 +19,8 @@
 #include "d3dx9tex.h"     // directX includes
 #include "gpdumb1.h"
 #include "mapObject.h"
+#include "Effect.h"
+#include "textManager.h"
 
 #include "..\..\2018Server\2018Server\protocol.h"
 
@@ -54,6 +56,11 @@ HWND main_window_handle = NULL; // save the window handle
 HINSTANCE main_instance = NULL; // save the instance
 char buffer[80];                // used to print text
 
+wchar_t g_message[300];
+unsigned char color_r = 255;
+unsigned char color_g = 255;
+unsigned char color_b = 255;
+
 // demo globals
 BOB			player;				// 플레이어 Unit
 //BOB			tree[50 * 50];
@@ -61,12 +68,15 @@ BOB			npc[NUM_OF_NPC];      // NPC Unit
 BOB         skelaton[MAX_USER];     // the other player skelaton
 
 MapObject* mapObject;
+Effect* attackEffect;
+textManager* logMsg;
 
 #define TILE_WIDTH 32
 
 #define UNIT_TEXTURE  0
 #define UINT_TREE_TEXTURE 1
 #define MAP_BACKTEXTURE 2
+#define EXPLOSION_TEXTURE 3
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -156,12 +166,17 @@ void ProcessPacket(char *ptr)
 		sc_packet_chat *my_packet = reinterpret_cast<sc_packet_chat *>(ptr);
 		int other_id = my_packet->id;
 		if (other_id == g_myid) {
-			wcsncpy_s(player.message, my_packet->message, 256);
-			player.message_time = GetTickCount();
+			//wcsncpy_s(player.message, my_packet->message, 256);
+			//player.message_time = GetTickCount();
+			wcsncpy_s(g_message, my_packet->message, 256);
+			logMsg->insert(GetTickCount(), g_message);
+			//color_r = 0;
+			//color_g = 255;
+			//color_b = 0;
 		}
 		else if (other_id < NPC_START) {
-			wcsncpy_s(skelaton[other_id].message, my_packet->message, 256);
-			skelaton[other_id].message_time = GetTickCount();
+			//wcsncpy_s(skelaton[other_id].message, my_packet->message, 256);
+			//skelaton[other_id].message_time = GetTickCount();
 		}
 		else {
 			wcsncpy_s(npc[other_id - NPC_START].message, my_packet->message, 256);
@@ -235,27 +250,36 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 			break;
 		prevInputTime = timeGetTime();
 		int x = 0, y = 0;
+		bool attack = false;
 		if (wparam == VK_RIGHT)	x += 1;
 		if (wparam == VK_LEFT)	x -= 1;
 		if (wparam == VK_UP)	y -= 1;
 		if (wparam == VK_DOWN)	y += 1;
+		if (wparam == VK_SPACE) attack = true;
 		cs_packet_up *my_packet = reinterpret_cast<cs_packet_up *>(send_buffer);
 		my_packet->size = sizeof(my_packet);
 		send_wsabuf.len = sizeof(my_packet);
 		DWORD iobyte;
-		if (0 != x) {
-			if (1 == x) my_packet->type = CS_RIGHT;
-			else my_packet->type = CS_LEFT;
-			int ret = WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
-			if (ret) {
-				int error_code = WSAGetLastError();
-				printf("Error while sending packet [%d]", error_code);
+		if (!attack) {
+			if (0 != x) {
+				if (1 == x) my_packet->type = CS_RIGHT;
+				else my_packet->type = CS_LEFT;
+				WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
+				/*if (ret) {
+					int error_code = WSAGetLastError();
+					printf("Error while sending packet [%d]", error_code);
+				}*/
+			}
+			if (0 != y) {
+				if (1 == y) my_packet->type = CS_DOWN;
+				else my_packet->type = CS_UP;
+				WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 			}
 		}
-		if (0 != y) {
-			if (1 == y) my_packet->type = CS_DOWN;
-			else my_packet->type = CS_UP;
+		else {
+			my_packet->type = CS_ATTACK;
 			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
+			attackEffect->update(player.x, player.y);
 		}
 
 
@@ -398,7 +422,7 @@ int Game_Init(void *parms)
 {
 	// this function is where you do all the initialization 
 	// for your game
-
+	logMsg = new textManager();
 	// set up screen dimensions
 	screen_width = WINDOW_WIDTH;
 	screen_height = WINDOW_HEIGHT;
@@ -412,12 +436,13 @@ int Game_Init(void *parms)
 
 	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 192, TILE_WIDTH);
 	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
+	Load_Texture(L"explosion.png", EXPLOSION_TEXTURE, 240, 41);
 
 	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
 	Load_Frame_BOB32(&player, UNIT_TEXTURE, 0, 2, 0, BITMAP_EXTRACT_MODE_CELL);
 
 	mapObject = new MapObject(MAP_BACKTEXTURE);
-
+	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
 	// set up stating state of skelaton
 	Set_Animation_BOB32(&player, 0);
 	Set_Anim_Speed_BOB32(&player, 4);
@@ -534,7 +559,7 @@ int Game_Main(void *parms)
 	// continuously in real-time this is like main() in C
 	// all the calls for you game go here!
 	// check of user is trying to exit
-	if (KEY_DOWN(VK_ESCAPE) || KEY_DOWN(VK_SPACE))
+	if (KEY_DOWN(VK_ESCAPE)/* || KEY_DOWN(VK_SPACE)*/)
 		PostMessage(main_window_handle, WM_DESTROY, 0, 0);
 	mapObject->setRect(g_left_x, g_top_y);
 	// start the timing clock
@@ -559,11 +584,16 @@ int Game_Main(void *parms)
 	for (int i = 0; i < MAX_USER; ++i) Draw_BOB32(&skelaton[i]);
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) Draw_BOB32(&npc[i]);
 
+	//drawEffect
+	if (attackEffect->now_render)
+		attackEffect->draw();
+
 	// draw some text
 	wchar_t text[300];
 	wsprintf(text, L"MY POSITION (%3d, %3d)", player.x, player.y);
 	Draw_Text_D3D(text, 10, screen_height - 64, D3DCOLOR_ARGB(255, 255, 255, 255));
-
+	//Draw_Text_D3D(g_message, 10, screen_height - 128, D3DCOLOR_ARGB(255, color_r, color_g, color_b));
+	logMsg->draw();
 	g_pSprite->End();
 	g_pd3dDevice->EndScene();
 

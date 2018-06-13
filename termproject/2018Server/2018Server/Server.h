@@ -8,12 +8,9 @@
 using namespace std;
 
 const int NONE_TYPE = 0;
-const int MOVE_TYPE = 1;
-const int MOVE_UP_TYPE = 2;
-const int MOVE_DOWN_TYPE = 3;
-const int MOVE_LEFT_TYPE = 4;
-const int MOVE_RIGHT_TYPE = 5;
-const int DB_UPDATE_TYPE = 6;
+const int MOVE_AROUND_TYPE = 1;
+const int MOVE_DIR_TYPE = 2;
+const int DB_UPDATE_TYPE = 3;
 
 
 
@@ -85,11 +82,13 @@ public:
 	bool CanSee(int cl1, int cl2);
 	void addViewList(unordered_set<int>& viewList, const int clientID, const int x, const int y);
 	unordered_set<int> ProcessNearZone(int key);
+	bool checkCollisionMap(int index);
+	bool checkCollisionMap(int x, int y);
 
 	void SendPacket(int id, void* packet);
 	void SendPutObject(int client, int object);
 	void SendRemoveObject(int client, int object);
-	void SendChatPacket(int to, int from, wchar_t* msg);
+	void SendChatPacket(int to, int from, const wchar_t* msg);
 	void DisconnectPlayer(int id);
 	void ProcessPacket(int clientID, char* packet);
 
@@ -99,7 +98,7 @@ public:
 
 	void add_timer(int id, int target, int info, int type, float time);
 	void MoveNpc(int id);
-	void MoveDirNpc(int id, int dir, int count, int target);
+	void MoveDirNpc(int id, int target);
 	void WakeUpNPC(int id);
 	void NPC_AI(int npc, int player);
 
@@ -112,7 +111,8 @@ public:
 
 	void UploadUserDatatoDB();
 
-	
+	bool nearArea(int id, int target);
+	void PlayerAttack(int id);
 };
 
 int CAPI_getX(lua_State* L);

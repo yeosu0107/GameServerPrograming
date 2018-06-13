@@ -10,7 +10,7 @@
 #define MAX_USER 1000		//ID (0~9)
 
 #define NPC_START  1000		//NPC ID
-#define NUM_OF_NPC  21000		//유저 + NPC의 수
+#define NUM_OF_NPC  3000		//유저 + NPC의 수
 
 #define MY_SERVER_PORT  4000
 
@@ -22,12 +22,14 @@
 #define CS_RIGHT    4
 #define CS_CHAT		5
 #define CS_RANDOM 6
+#define CS_ATTACK 7
 
 #define SC_POS           1
 #define SC_PUT_PLAYER    2
 #define SC_REMOVE_PLAYER 3
 #define SC_CHAT			4
 #define SC_DUPLICATON_PLAYER 5
+#define SC_ATTACK 6
 
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
