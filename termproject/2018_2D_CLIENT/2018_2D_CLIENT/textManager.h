@@ -15,14 +15,13 @@ using namespace std;
 
 struct textMSG {
 	DWORD time;
-	WCHAR* msg;
-	textMSG(DWORD _time, WCHAR* _msg) {
+	WCHAR msg[300];
+	textMSG(DWORD _time) {
 		time = _time;
-		msg = _msg;
 	}
 	textMSG(const textMSG& T) {
 		this->time = T.time;
-		this->msg = T.msg;
+		wcsncpy_s(this->msg, T.msg, 256);
 	}
 };
 

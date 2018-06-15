@@ -4,13 +4,14 @@
 #include "protocol.h"
 #include "Client.h"
 #include "DBConnect.h"
-
+#include "CollisionMap.h"
 using namespace std;
 
 const int NONE_TYPE = 0;
 const int MOVE_AROUND_TYPE = 1;
 const int MOVE_DIR_TYPE = 2;
 const int DB_UPDATE_TYPE = 3;
+const int NPC_RESPAWN_TYPE = 4;
 
 
 
@@ -69,6 +70,7 @@ private:
 	unordered_set<int> g_zone[11][11];
 
 	int (*g_collisionMap)[300];
+	queue<spawnPoint> g_spawnPoint;
 
 	bool isNPC(int index);
 public:
@@ -102,6 +104,7 @@ public:
 	void MoveDirNpc(int id, int target);
 	void WakeUpNPC(int id);
 	void NPC_AI(int npc, int player);
+	void RespawnNPC(int npc);
 
 	Object* getClient(int id);
 	HANDLE* getIOCP();

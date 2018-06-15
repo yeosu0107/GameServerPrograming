@@ -1,7 +1,7 @@
 #include <string>
 #include "stdafx.h"
 #include "Server.h"
-#include "CollisionMap.h"
+
 
 
 Server* Server::g_server = nullptr;
@@ -29,8 +29,9 @@ Server * Server::getInstance()
 
 void Server::Initialize()
 {
-	CollisionMap mapFile;
+	CsvMap mapFile;
 	g_collisionMap = mapFile.getCollisionMap();
+	g_spawnPoint = mapFile.getSpawnPoint();
 
 	//g_clients.resize(NUM_OF_NPC, new Client());
 	wcout.imbue(locale("korean"));
@@ -41,8 +42,11 @@ void Server::Initialize()
 	cout << "Player Info Initialize Complete" << endl;
 	srand((unsigned)time(NULL));
 	for (int i = NPC_START; i < NUM_OF_NPC; ++i) {
-		int xPos = rand() % BOARD_WIDTH;
-		int yPos = rand() % BOARD_HEIGHT;
+		spawnPoint info = g_spawnPoint.front();
+		g_spawnPoint.pop();
+
+		int xPos = info.xPos;
+		int yPos = info.yPos;
 
 		g_zone[yPos / ZONE_INTERVAL][xPos/ZONE_INTERVAL].emplace(i);
 
@@ -51,7 +55,7 @@ void Server::Initialize()
 		lua_register(ai->getInstance(), "API_get_y", CAPI_getY);
 		lua_register(ai->getInstance(), "API_send_msg", CAPI_sendMsg);
 		lua_register(ai->getInstance(), "API_npc_move", CAPI_moveNPC);
-		g_clients.emplace_back(new Npc(xPos, yPos, ai));
+		g_clients.emplace_back(new Npc(xPos, yPos, ai, info.type));
 	}
 	cout << "Npc Info Initialize Complete" << endl;
 
@@ -749,6 +753,7 @@ void Server::MoveDirNpc(int key, int target)
 
 	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
 	thisNPC->ai_work = true;
+	thisNPC->state = STATE_MOVE;
 
 	thisNPC->vlm.lock();
 	unordered_set<int> new_viewList = thisNPC->viewlist;
@@ -812,8 +817,28 @@ void Server::WakeUpNPC(int id)
 void Server::NPC_AI(int npc, int player)
 {
 	Npc* AI = reinterpret_cast<Npc*>(g_clients[npc]);
-	if(AI->ai_work == false)
+	if (AI->ai_work != false)
+		return;
+	switch (AI->type) {
+	case MONSTER_PASSIVE:
+		break;
+	case MONSTER_ACTIVE:
 		AI->aiScript->eventPlayerMove(player);
+		break;
+	case MONSTER_OFFENSIVE:
+		WakeUpNPC(npc);
+		AI->aiScript->eventPlayerMove(player);
+		break;
+	case MONSTER_BOSS:
+		AI->aiScript->eventPlayerMove(player);
+		break;
+	}
+}
+
+void Server::RespawnNPC(int npc)
+{
+	Npc* monster = reinterpret_cast<Npc*>(g_clients[npc]);
+	monster->Respawn();
 }
 
 Object * Server::getClient(int id)
@@ -899,26 +924,40 @@ bool Server::nearArea(int id, int target)
 }
 
 string hitMsg = "The Player hit the monster (damage : ";
-
+string killMsg = "The Player kill the monster (exp gain : ";
+string msg;
 void Server::PlayerAttack(int id)
 {
 	Client* player = reinterpret_cast<Client*>(g_clients[id]);
 	player->vlm.lock();
 	unordered_set<int> nearList = player->viewlist;
 	player->vlm.unlock();
-	char damage = g_clients[id]->level * 3;
-	int i = 0;
+	char damage = g_clients[id]->level * 3 + rand()%3;
 	for (auto& npc : nearList) {
+		if (g_clients[npc]->is_use == false)
+			continue;
+
 		if (nearArea(id, npc) == true) {
 			g_clients[npc]->hp -= damage;
-			string msg = hitMsg + to_string(damage) + ")";
+			string msg;
 			wstring wide_string;
+			if (g_clients[npc]->hp <= 0) {
+				msg = killMsg + to_string(g_clients[npc]->level) + ")";
+
+				g_clients[npc]->is_use = false;
+				player->exp += g_clients[npc]->level;
+
+				add_timer(npc, -1, -1, NPC_RESPAWN_TYPE, 10);
+				SendStatPacket(id);
+				SendRemoveObject(id, npc);
+			}
+			else {
+				msg = hitMsg + to_string(damage) + ")";
+			}
 			wide_string.assign(msg.begin(), msg.end());
-			i++;
 			SendChatPacket(id, id, wide_string.c_str());
 		}
 	}
-	printf("%d\n", i);
 }
 
 int CAPI_getX(lua_State * L)

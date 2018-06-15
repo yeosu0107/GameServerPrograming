@@ -53,6 +53,10 @@ void WorkerThread()
 			Server::getInstance()->MoveDirNpc((int)key, (int)exover->event_target);
 			delete exover;
 		}
+		else if (exover->event_type == EV_NPC_RESPAWN) {
+			Server::getInstance()->RespawnNPC((int)key);
+			delete exover;
+		}
 		else {
 			//cout << "Unknown Event Error in Worker Thread\n";
 		}
@@ -112,6 +116,12 @@ void TimerThread() {
 				over->event_target = nowEvent->target;
 				over->event_info = nowEvent->info;
 
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					0, nowEvent->id, &over->wsaover);
+			}
+			else if (nowEvent->type = NPC_RESPAWN_TYPE) {
+				EXOver* over = new EXOver();
+				over->event_type = EV_NPC_RESPAWN;
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
 			}

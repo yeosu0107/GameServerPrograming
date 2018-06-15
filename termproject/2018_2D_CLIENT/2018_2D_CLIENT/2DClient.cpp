@@ -594,7 +594,7 @@ int Game_Main(void *parms)
 	// draw the skelaton
 	Draw_BOB32(&player);
 	for (int i = 0; i < MAX_USER; ++i) Draw_BOB32(&skelaton[i]);
-	for (int i = NPC_START; i < NUM_OF_NPC; ++i) Draw_BOB32(&npc[i]);
+	for (int i = 0; i < NUM_OF_NPC; ++i) Draw_BOB32(&npc[i]);
 
 	//drawEffect
 	if (attackEffect->now_render)

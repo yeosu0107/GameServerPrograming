@@ -19,17 +19,32 @@ public:
 	int zone_x, zone_y;
 };
 
+const char MONSTER_PASSIVE = 0;
+const char MONSTER_ACTIVE = 1;
+const char MONSTER_OFFENSIVE = 2;
+const char MONSTER_BOSS = 3;
+
+const char STATE_IDLE = 0;
+const char STATE_MOVE = 1;
+const char STATE_ATTACK = 2;
+const char STATE_DEATH = 3;
+
 class Npc : public Object {
 public:
 	bool is_live;
 	mutex vlm;
 	unordered_set<int> viewlist;
+
+	char type;
+	char state;
 	
 	ScriptEngine* aiScript;
 	
+	int start_x, start_y;
+
 	Npc() {}
 
-	Npc(int xPos, int yPos, ScriptEngine* ai)
+	Npc(int xPos, int yPos, ScriptEngine* ai, char _t)
 	{
 		x = xPos;
 		y = yPos;
@@ -37,10 +52,33 @@ public:
 		is_active = false;
 		zone_x = x / ZONE_INTERVAL;
 		zone_y = y / ZONE_INTERVAL;
+		start_x = xPos;
+		start_y = yPos;
 
 		aiScript = ai;
 		ai_work = false;
+		type = _t;
+		
+		switch (type) {
+		case MONSTER_PASSIVE:
+			level = rand() % 10;
+			break;
+		case MONSTER_ACTIVE:
+			level = rand() % 10 + 10;
+			break;
+		case MONSTER_OFFENSIVE:
+			level = rand() % 10 + 20;
+			break;
+		case MONSTER_BOSS:
+			level = 30;
+			break;
+		}
+		hp = level * 9;
+
+		state = STATE_IDLE;
 	}
+
+	void Respawn();
 };
 
 static const char EV_RECV = 0;
@@ -49,6 +87,7 @@ static const char EV_MOVE = 2;
 static const char EV_DBUPDATE = 3;
 static const char EV_PLAYER_MOVE = 4;
 static const char EV_MOVE_DIR = 5;
+static const char EV_NPC_RESPAWN = 6;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;

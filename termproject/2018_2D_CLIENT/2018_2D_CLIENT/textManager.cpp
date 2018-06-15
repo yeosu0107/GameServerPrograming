@@ -4,7 +4,8 @@ const char MAX_TEXT = 5;
 
 void textManager::insert(DWORD time, WCHAR * msg)
 {
-	textMSG tmp(time, msg);
+	textMSG tmp(time);
+	wcsncpy_s(tmp.msg, msg, 256);
 	m_message.push(tmp);
 }
 
@@ -19,7 +20,7 @@ void textManager::draw()
 		size = m_message.size();
 	}
 	
-	for (int i = 0; i < size; ++i) {
+ 	for (int i = 0; i < size; ++i) {
 		if (m_message.front().time < GetTickCount() - 2000) {
 			m_message.pop();
 			continue;
