@@ -23,6 +23,7 @@
 #define CS_CHAT		5
 #define CS_RANDOM 6
 #define CS_ATTACK 7
+#define CS_GOTOWN 8
 
 #define SC_POS           1
 #define SC_PUT_PLAYER    2

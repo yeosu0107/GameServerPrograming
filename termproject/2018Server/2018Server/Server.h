@@ -12,6 +12,7 @@ const int MOVE_AROUND_TYPE = 1;
 const int MOVE_DIR_TYPE = 2;
 const int DB_UPDATE_TYPE = 3;
 const int NPC_RESPAWN_TYPE = 4;
+const int NPC_ATTACK_TYPE = 5;
 
 
 
@@ -106,6 +107,9 @@ public:
 	void NPC_AI(int npc, int player);
 	void RespawnNPC(int npc);
 
+	void ReturnTown(int id);
+	void RespwanPlayer(int id);
+
 	Object* getClient(int id);
 	HANDLE* getIOCP();
 	priority_queue<Event*, vector<Event*>, compare>* getEventQueue(){ return &event_queue; }
@@ -117,6 +121,7 @@ public:
 
 	bool nearArea(int id, int target);
 	void PlayerAttack(int id);
+	void NPCAttack(int id, int target);
 };
 
 int CAPI_getX(lua_State* L);

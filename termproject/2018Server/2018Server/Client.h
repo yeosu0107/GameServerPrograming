@@ -88,6 +88,7 @@ static const char EV_DBUPDATE = 3;
 static const char EV_PLAYER_MOVE = 4;
 static const char EV_MOVE_DIR = 5;
 static const char EV_NPC_RESPAWN = 6;
+static const char EV_NPC_ATTACK = 7;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;

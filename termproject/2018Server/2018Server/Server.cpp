@@ -301,13 +301,17 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		client->y = rand() % BOARD_HEIGHT;
 		break;
 	case CS_ATTACK:
-		printf("recv attack message : player %d\n", clientID);
+		//printf("recv attack message : player %d\n", clientID);
+		break;
+	case CS_GOTOWN:
+		client->x = 129;
+		client->y = 191;
 		break;
 	default:
 		//cout << "Unknown Protocol from Client [" << clientID << "]\n";
 		return;
 	}
-	if (p->type < CS_ATTACK) {
+	if (p->type != CS_ATTACK) {
 		if (checkCollisionMap(clientID)) {
 			client->x = origin_x;
 			client->y = origin_y;
@@ -693,8 +697,25 @@ void Server::MoveNpc(int key)
 
 void Server::MoveDirNpc(int key, int target)
 {
+	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
+	thisNPC->ai_work = true;
+
+	if (thisNPC->state == STATE_DEATH) {
+		return;
+	}
+
 	int dir_x = g_clients[target]->x - g_clients[key]->x;
 	int dir_y = g_clients[target]->y - g_clients[key]->y;
+	if ((dir_x*dir_x <= 1) && (dir_y*dir_y <= 1)) {
+		//플레이어 공격
+		/*wchar_t tmp[7] = L"attack";
+		SendChatPacket(target, key, tmp);*/
+		add_timer(key, target, -1, NPC_ATTACK_TYPE, 0.5f);
+		thisNPC->state = STATE_ATTACK;
+		//g_clients[key]->ai_work = false;
+		return;
+	}
+	thisNPC->state = STATE_MOVE;
 	int move_x = -1, move_y = -1;
 	if (dir_x >= dir_y) {
 		if (dir_x != 0) {
@@ -750,11 +771,6 @@ void Server::MoveDirNpc(int key, int target)
 	posPacket.x = g_clients[key]->x;
 	posPacket.y = g_clients[key]->y;
 
-
-	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
-	thisNPC->ai_work = true;
-	thisNPC->state = STATE_MOVE;
-
 	thisNPC->vlm.lock();
 	unordered_set<int> new_viewList = thisNPC->viewlist;
 	thisNPC->vlm.unlock();
@@ -784,15 +800,17 @@ void Server::MoveDirNpc(int key, int target)
 	}
 	dir_x = g_clients[target]->x - g_clients[key]->x;
 	dir_y = g_clients[target]->y - g_clients[key]->y;
-	if ((dir_x <= 1 && dir_x >= -1) && (dir_y <= 1 && dir_y >= -1)) {
-		//플레이어 공격
-		wchar_t tmp[7] = L"attack";
-		SendChatPacket(target, key, tmp);
-		g_clients[key]->ai_work = false;
-	}
-	else {
-		add_timer(key, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
-	}
+	//if ((dir_x*dir_x <= 1) && (dir_y*dir_y <= 1)) {
+	//	//플레이어 공격
+	//	/*wchar_t tmp[7] = L"attack";
+	//	SendChatPacket(target, key, tmp);*/
+	//	add_timer(key, target, -1, NPC_ATTACK_TYPE, 0.5f);
+	//	thisNPC->state = STATE_ATTACK;
+	//	//g_clients[key]->ai_work = false;
+	//}
+
+	add_timer(key, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
+	
 	
 	//else {
 	//	thisNPC->ai_work = false;
@@ -839,6 +857,25 @@ void Server::RespawnNPC(int npc)
 {
 	Npc* monster = reinterpret_cast<Npc*>(g_clients[npc]);
 	monster->Respawn();
+	unordered_set<int> nearList = ProcessNearZone(npc);
+	for (auto& player : nearList) {
+		SendPutObject(player, npc);
+	}
+}
+
+void Server::ReturnTown(int id)
+{
+	sc_packet_pos p;
+	p.id = id;
+	p.size = sizeof(sc_packet_pos);
+	p.type = CS_GOTOWN;
+	ProcessPacket(id, reinterpret_cast<char*>(&p));
+}
+
+void Server::RespwanPlayer(int id)
+{
+	ReturnTown(id);
+	g_clients[id]->hp = g_clients[id]->level * 20;
 }
 
 Object * Server::getClient(int id)
@@ -923,9 +960,8 @@ bool Server::nearArea(int id, int target)
 	return false;
 }
 
-string hitMsg = "The Player hit the monster (damage : ";
-string killMsg = "The Player kill the monster (exp gain : ";
-string msg;
+string hitMsg = "The Player hit the monster | damage : ";
+string killMsg = "The Player kill the monster | exp gain : ";
 void Server::PlayerAttack(int id)
 {
 	Client* player = reinterpret_cast<Client*>(g_clients[id]);
@@ -939,12 +975,15 @@ void Server::PlayerAttack(int id)
 
 		if (nearArea(id, npc) == true) {
 			g_clients[npc]->hp -= damage;
+			Npc* ai = reinterpret_cast<Npc*>(g_clients[npc]);
+			if (ai->state == STATE_IDLE)
+				add_timer(npc, id, -1, MOVE_DIR_TYPE, 0);
 			string msg;
 			wstring wide_string;
-			if (g_clients[npc]->hp <= 0) {
-				msg = killMsg + to_string(g_clients[npc]->level) + ")";
-
-				g_clients[npc]->is_use = false;
+			if (ai->hp <= 0) {
+				msg = killMsg + to_string(g_clients[npc]->level);
+				ai->state = STATE_DEATH;
+				ai->is_use = false;
 				player->exp += g_clients[npc]->level;
 
 				add_timer(npc, -1, -1, NPC_RESPAWN_TYPE, 10);
@@ -952,11 +991,50 @@ void Server::PlayerAttack(int id)
 				SendRemoveObject(id, npc);
 			}
 			else {
-				msg = hitMsg + to_string(damage) + ")";
+				msg = hitMsg + to_string(damage);
 			}
 			wide_string.assign(msg.begin(), msg.end());
 			SendChatPacket(id, id, wide_string.c_str());
 		}
+	}
+}
+
+string hitMsg2 = "The Monster hit player | damage : ";
+string killMsg2 = "The Monster kill player... return to town";
+
+void Server::NPCAttack(int id, int target)
+{
+	Npc* npc = reinterpret_cast<Npc*>(g_clients[id]);
+	if (npc->state == STATE_DEATH)
+		return;
+	npc->state = STATE_ATTACK;
+	npc->ai_work = true;
+	npc->vlm.lock();
+	unordered_set<int> nearList = npc->viewlist;
+	npc->vlm.unlock();
+	char damage = npc->level * 3 + rand() % 3;
+	if (nearArea(id, target) == true) {
+		g_clients[target]->hp -= damage;
+		string msg;
+		wstring wide_string;
+		if (g_clients[target]->hp < 0) {
+			msg = killMsg2;
+			npc->ai_work = false;
+			npc->state = STATE_IDLE;
+			RespwanPlayer(target);
+		}
+		else {
+			msg = hitMsg2 + to_string(damage);
+			add_timer(id, target, 01, NPC_ATTACK_TYPE, 0.5f);
+		}
+		wchar_t tmp[7] = L"attack";
+		SendChatPacket(target, id, tmp);
+		wide_string.assign(msg.begin(), msg.end());
+		SendChatPacket(target, target, wide_string.c_str());
+		SendStatPacket(target);
+	}
+	else {
+		add_timer(id, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
 	}
 }
 
