@@ -194,8 +194,10 @@ int Load_Frame_BOB32(BOB_PTR bob, // bob to load with data
 	if (!bob)   return(0);
 	if (mode == BITMAP_EXTRACT_MODE_CELL)
 	{
-		bob->tx[frame] = cx * (bob->width + 1) + 1;
-		bob->ty[frame] = cy * (bob->height + 1) + 1;
+		/*bob->tx[frame] = cx * (bob->width + 1) + 1;
+		bob->ty[frame] = cy * (bob->height + 1) + 1;*/
+		bob->tx[frame] = cx * (bob->width);
+		bob->ty[frame] = cy * (bob->height);
 	} // end if
 
 	bob->images[frame] = g_textures[texture_id];

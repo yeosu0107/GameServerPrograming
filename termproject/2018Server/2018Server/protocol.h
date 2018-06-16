@@ -36,6 +36,11 @@
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
 
+#define INFO_NONE 0
+#define INFO_ATTACK 1
+#define INFO_SKILL1 2
+#define INFO_SKILL2 3
+
 #pragma pack (push, 1)
 
 struct cs_packet_up {
@@ -76,6 +81,7 @@ struct sc_packet_put_player {
 	BYTE size;
 	BYTE type;
 	WORD id;
+	WORD pic_type;
 	UINT x;
 	UINT y;
 };
@@ -89,6 +95,7 @@ struct sc_packet_chat {
 	BYTE size;
 	BYTE type;
 	WORD id;
+	WORD info;
 	WCHAR message[MAX_STR_SIZE];
 };
 

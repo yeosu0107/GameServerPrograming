@@ -64,6 +64,7 @@ unsigned char color_b = 255;
 
 // demo globals
 BOB			player;				// 플레이어 Unit
+bool			player_animate = false;
 //BOB			npc[NUM_OF_NPC];      // NPC Unit
 Monster		monster[NUM_OF_NPC];
 BOB         skelaton[MAX_USER];     // the other player skelaton
@@ -78,6 +79,8 @@ textManager* logMsg;
 #define UINT_TREE_TEXTURE 1
 #define MAP_BACKTEXTURE 2
 #define EXPLOSION_TEXTURE 3
+#define MONSTER_TEXTURE 4
+#define CHARACTER_TEXTURE 5
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -126,6 +129,12 @@ void ProcessPacket(char *ptr)
 		}
 		else {
 			monster[id - NPC_START].Initialize(my_packet->x, my_packet->y);
+			if (monster[id - NPC_START].type != my_packet->pic_type) {
+				monster[id - NPC_START].type = my_packet->pic_type;
+				Load_Frame_BOB32(&monster[id - NPC_START].object, MONSTER_TEXTURE, 0, my_packet->pic_type * 3, 0, BITMAP_EXTRACT_MODE_CELL);
+				Load_Frame_BOB32(&monster[id - NPC_START].object, MONSTER_TEXTURE, 1, my_packet->pic_type * 3 + 1, 0, BITMAP_EXTRACT_MODE_CELL);
+				Load_Frame_BOB32(&monster[id - NPC_START].object, MONSTER_TEXTURE, 2, my_packet->pic_type * 3 + 2, 0, BITMAP_EXTRACT_MODE_CELL);
+			}
 			//npc[id - NPC_START].x = my_packet->x;
 			//npc[id - NPC_START].y = my_packet->y;
 			//npc[id - NPC_START].attr |= BOB_ATTR_VISIBLE;
@@ -139,8 +148,28 @@ void ProcessPacket(char *ptr)
 		if (other_id == g_myid) {
 			g_left_x = my_packet->x - 10;
 			g_top_y = my_packet->y - 10;
+			if (player.x > my_packet->x) {
+				if(player.curr_animation != 1)
+					Set_Animation_BOB32(&player, 1);
+			}
+			else if (player.x < my_packet->x) {
+				if (player.curr_animation != 2)
+					Set_Animation_BOB32(&player, 2);
+			}
+			else if (player.y > my_packet->y) {
+				if (player.curr_animation != 3)
+					Set_Animation_BOB32(&player, 3);
+			}
+			else if (player.y < my_packet->y) {
+				if (player.curr_animation != 0)
+					Set_Animation_BOB32(&player, 0);
+			}
+
 			player.x = my_packet->x;
 			player.y = my_packet->y;
+
+			player_animate = true;
+
 		}
 		else if (other_id < NPC_START) {
 			skelaton[other_id].x = my_packet->x;
@@ -192,7 +221,8 @@ void ProcessPacket(char *ptr)
 			//npc[other_id - NPC_START].message_time = GetTickCount();
 			wcsncpy_s(monster[other_id - NPC_START].object.message, my_packet->message, 256);
 			monster[other_id - NPC_START].object.message_time = GetTickCount();
-			monster[other_id - NPC_START].setDir(player.x, player.y);
+			if(my_packet->info == INFO_ATTACK)
+				monster[other_id - NPC_START].setDir(player.x, player.y);
 		}
 		break;
 	}
@@ -456,20 +486,38 @@ int Game_Init(void *parms)
 	// now let's load in all the frames for the skelaton!!!
 
 	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 192, TILE_WIDTH);
+	Load_Texture(L"monsterSet.png", MONSTER_TEXTURE, 384, 256);
 	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
 	Load_Texture(L"explosion.png", EXPLOSION_TEXTURE, 240, 41);
+	Load_Texture(L"charSet.png", CHARACTER_TEXTURE, 384, 256);
 
-	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME)) return(0);
-	Load_Frame_BOB32(&player, UNIT_TEXTURE, 0, 2, 0, BITMAP_EXTRACT_MODE_CELL);
+	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 12, BOB_ATTR_MULTI_ANIM)) return(0);
+	
+	int index = 0;
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			Load_Frame_BOB32(&player, CHARACTER_TEXTURE, index, j, i, BITMAP_EXTRACT_MODE_CELL);
+			index += 1;
+		}
+	}
+	int* down = new int[3]{ 0,1,2 };
+	int* left = new int[3]{ 3,4,5 };
+	int* right = new int[3]{ 6,7,8 };
+	int* up = new int[3]{ 9,10,11 };
 
-	mapObject = new MapObject(MAP_BACKTEXTURE);
-	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
+	Load_Animation_BOB32(&player, 0, 3, down);
+	Load_Animation_BOB32(&player, 1, 3, left);
+	Load_Animation_BOB32(&player, 2, 3, right);
+	Load_Animation_BOB32(&player, 3, 3, up);
+
 	// set up stating state of skelaton
 	Set_Animation_BOB32(&player, 0);
-	Set_Anim_Speed_BOB32(&player, 4);
+	Set_Anim_Speed_BOB32(&player, 1);
 	Set_Vel_BOB32(&player, 0, 0);
 	Set_Pos_BOB32(&player, 0, 0);
 
+	mapObject = new MapObject(MAP_BACKTEXTURE);
+	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
 
 	// create skelaton bob
 	for (int i = 0; i < MAX_USER; ++i) {
@@ -487,13 +535,13 @@ int Game_Init(void *parms)
 	// create skelaton bob
 	for (int i = 0; i < NUM_OF_NPC; ++i) {
 		BOB* npc = &monster[i].object;
-		if (!Create_BOB32(npc, 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME))
+		if (!Create_BOB32(npc, 0, 0, TILE_WIDTH, TILE_WIDTH, 3, BOB_ATTR_MULTI_FRAME))
 			return(0);
-		Load_Frame_BOB32(npc, UNIT_TEXTURE, 0, 4, 0, BITMAP_EXTRACT_MODE_CELL);
+		//Load_Frame_BOB32(npc, MONSTER_TEXTURE, 0, 0, 0, BITMAP_EXTRACT_MODE_CELL);
 
 		// set up stating state of skelaton
 		Set_Animation_BOB32(npc, 0);
-		Set_Anim_Speed_BOB32(npc, 4);
+		Set_Anim_Speed_BOB32(npc, 8);
 		Set_Vel_BOB32(npc, 0, 0);
 		Set_Pos_BOB32(npc, 0, 0);
 	}
@@ -602,6 +650,10 @@ int Game_Main(void *parms)
 
 
 	// draw the skelaton
+	if (player_animate) {
+		Animate_BOB32(&player);
+		player_animate = false;
+	}
 	Draw_BOB32(&player);
 	for (int i = 0; i < MAX_USER; ++i) Draw_BOB32(&skelaton[i]);
 	for (int i = 0; i < NUM_OF_NPC; ++i) {

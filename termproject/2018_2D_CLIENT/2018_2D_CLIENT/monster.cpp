@@ -62,6 +62,7 @@ void Monster::draw()
 		return;
 
 	attack();
+	Animate_BOB32(&object);
 
 	D3DXVECTOR3 pos = D3DXVECTOR3((object.x - g_left_x) * 32.0f + 8 + attack_x,
 		(object.y - g_top_y) * 32.0f + 8 + attack_y, 0.0);

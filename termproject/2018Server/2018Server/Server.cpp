@@ -194,6 +194,11 @@ void Server::SendPutObject(int client, int object) {
 	p.x = g_clients[object]->x;
 	p.y = g_clients[object]->y;
 
+	if (object >= NPC_START)
+		p.pic_type = reinterpret_cast<Npc*>(g_clients[object])->type;
+	else
+		p.pic_type = -1;
+
 	SendPacket(client, &p);
 }
 
@@ -206,12 +211,13 @@ void Server::SendRemoveObject(int client, int object) {
 	SendPacket(client, &p);
 }
 
-void Server::SendChatPacket(int to, int from, const wchar_t * msg)
+void Server::SendChatPacket(int to, int from, const wchar_t * msg, int info)
 {
 	sc_packet_chat p;
 	p.id = from;
 	p.size = sizeof(p);
 	p.type = SC_CHAT;
+	p.info = info;
 	wcscpy_s(p.message, msg);
 
 	SendPacket(to, &p);
@@ -457,8 +463,8 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 	Client* newClient = reinterpret_cast<Client*>(g_clients[new_key]);
 
 	newClient->s = new_socket;
-	newClient->x = 10;
-	newClient->y = 10;
+	newClient->x = 129;
+	newClient->y = 191;
 	ZeroMemory(&newClient->exover.wsaover, sizeof(WSAOVERLAPPED));
 
 	newClient->is_use = true;
@@ -713,10 +719,12 @@ void Server::MoveDirNpc(int key, int target)
 		//플레이어 공격
 		/*wchar_t tmp[7] = L"attack";
 		SendChatPacket(target, key, tmp);*/
-		add_timer(key, target, -1, NPC_ATTACK_TYPE, 0.5f);
-		thisNPC->state = STATE_ATTACK;
-		//g_clients[key]->ai_work = false;
-		return;
+		if (dir_x == 0 || dir_y == 0) {
+			add_timer(key, target, -1, NPC_ATTACK_TYPE, 0.5f);
+			thisNPC->state = STATE_ATTACK;
+			//g_clients[key]->ai_work = false;
+			return;
+		}
 	}
 	thisNPC->state = STATE_MOVE;
 	int move_x = -1, move_y = -1;
@@ -999,7 +1007,7 @@ void Server::PlayerAttack(int id)
 				msg = hitMsg + to_string(damage);
 			}
 			wide_string.assign(msg.begin(), msg.end());
-			SendChatPacket(id, id, wide_string.c_str());
+			SendChatPacket(id, id, wide_string.c_str(), INFO_ATTACK);
 		}
 	}
 }
@@ -1012,7 +1020,7 @@ void Server::PlayerLevelUp(Client* player)
 	wstring wide_string;
 
 	wide_string.assign(levelmsg.begin(), levelmsg.end());
-	SendChatPacket(player->player_id, player->player_id, wide_string.c_str());
+	SendChatPacket(player->player_id, player->player_id, wide_string.c_str(), INFO_NONE);
 }
 
 string hitMsg2 = "The Monster hit player | damage : ";
@@ -1044,9 +1052,9 @@ void Server::NPCAttack(int id, int target)
 			add_timer(id, target, 01, NPC_ATTACK_TYPE, 0.5f);
 		}
 		wchar_t tmp[7] = L"attack";
-		SendChatPacket(target, id, tmp);
+		SendChatPacket(target, id, tmp, INFO_ATTACK);
 		wide_string.assign(msg.begin(), msg.end());
-		SendChatPacket(target, target, wide_string.c_str());
+		SendChatPacket(target, target, wide_string.c_str(), INFO_NONE);
 		SendStatPacket(target);
 	}
 	else {
@@ -1090,7 +1098,7 @@ int CAPI_sendMsg(lua_State * L)
 	mbstowcs_s(&wlen, buf, len, msg, _TRUNCATE);
 	buf[MAX_STR_SIZE - 1] = (wchar_t)0;
 
-	Server::getInstance()->SendChatPacket(player, chatter, buf);
+	Server::getInstance()->SendChatPacket(player, chatter, buf, INFO_NONE);
 	return 0;
 }
 

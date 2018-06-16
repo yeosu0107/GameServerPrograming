@@ -93,7 +93,7 @@ public:
 	void SendPacket(int id, void* packet);
 	void SendPutObject(int client, int object);
 	void SendRemoveObject(int client, int object);
-	void SendChatPacket(int to, int from, const wchar_t* msg);
+	void SendChatPacket(int to, int from, const wchar_t* msg, int info);
 	void SendStatPacket(int id);
 	void DisconnectPlayer(int id);
 	void ProcessPacket(int clientID, char* packet);

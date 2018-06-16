@@ -19,6 +19,8 @@ struct Monster
 {
 	BOB object;
 
+	int type = -1;
+
 	int attack_x = 0, attack_y = 0;
 	int attack_dir = 0;
 	int dir = 1;
