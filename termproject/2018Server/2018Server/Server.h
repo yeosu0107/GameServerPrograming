@@ -72,6 +72,8 @@ private:
 
 	int (*g_collisionMap)[300];
 	queue<spawnPoint> g_spawnPoint;
+	vector<int> g_expTable;
+	int g_MaxLevel;
 
 	bool isNPC(int index);
 public:
@@ -121,6 +123,7 @@ public:
 
 	bool nearArea(int id, int target);
 	void PlayerAttack(int id);
+	void PlayerLevelUp(Client* player);
 	void NPCAttack(int id, int target);
 };
 

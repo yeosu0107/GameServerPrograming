@@ -7,6 +7,7 @@ CsvMap::CsvMap()
 {
 	LoadmapFile("myMap_collision.csv");
 	LoadSpawnPoint("myMap_spawn.csv");
+	LoadExpTable("exp.csv");
 }
 
 CsvMap::~CsvMap()
@@ -63,5 +64,21 @@ void CsvMap::LoadSpawnPoint(const char * fileName)
 		}
 		xPos = 0;
 		yPos++;
+	}
+}
+
+void CsvMap::LoadExpTable(const char * fileName)
+{
+	ifstream in(fileName);
+
+	string delim = ",";
+	StringTokenizer st = StringTokenizer("");
+	string line;
+
+	while (getline(in, line)) {
+		st = StringTokenizer(line, delim);
+		while (st.countTokens() != 0) {
+			expTable.emplace_back(atoi(st.nextToken().c_str()));
+		}
 	}
 }

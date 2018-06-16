@@ -21,6 +21,7 @@
 #include "mapObject.h"
 #include "Effect.h"
 #include "textManager.h"
+#include "monster.h"
 
 #include "..\..\2018Server\2018Server\protocol.h"
 
@@ -63,8 +64,8 @@ unsigned char color_b = 255;
 
 // demo globals
 BOB			player;				// 플레이어 Unit
-//BOB			tree[50 * 50];
-BOB			npc[NUM_OF_NPC];      // NPC Unit
+//BOB			npc[NUM_OF_NPC];      // NPC Unit
+Monster		monster[NUM_OF_NPC];
 BOB         skelaton[MAX_USER];     // the other player skelaton
 
 MapObject* mapObject;
@@ -89,6 +90,7 @@ int		saved_packet_size = 0;
 int		g_myid;
 
 int g_myexp = 0;
+int g_maxexp = 0;
 int g_myhp = 0;
 int g_mylevel = 0;
 
@@ -123,9 +125,10 @@ void ProcessPacket(char *ptr)
 			skelaton[id].attr |= BOB_ATTR_VISIBLE;
 		}
 		else {
-			npc[id - NPC_START].x = my_packet->x;
-			npc[id - NPC_START].y = my_packet->y;
-			npc[id - NPC_START].attr |= BOB_ATTR_VISIBLE;
+			monster[id - NPC_START].Initialize(my_packet->x, my_packet->y);
+			//npc[id - NPC_START].x = my_packet->x;
+			//npc[id - NPC_START].y = my_packet->y;
+			//npc[id - NPC_START].attr |= BOB_ATTR_VISIBLE;
 		}
 		break;
 	}
@@ -144,8 +147,9 @@ void ProcessPacket(char *ptr)
 			skelaton[other_id].y = my_packet->y;
 		}
 		else {
-			npc[other_id - NPC_START].x = my_packet->x;
-			npc[other_id - NPC_START].y = my_packet->y;
+			monster[other_id - NPC_START].setPos(my_packet->x, my_packet->y);
+			//npc[other_id - NPC_START].x = my_packet->x;
+			//npc[other_id - NPC_START].y = my_packet->y;
 		}
 		break;
 	}
@@ -161,7 +165,8 @@ void ProcessPacket(char *ptr)
 			skelaton[other_id].attr &= ~BOB_ATTR_VISIBLE;
 		}
 		else {
-			npc[other_id - NPC_START].attr &= ~BOB_ATTR_VISIBLE;
+			monster[other_id - NPC_START].object.attr &= ~BOB_ATTR_VISIBLE;
+			//npc[other_id - NPC_START].attr &= ~BOB_ATTR_VISIBLE;
 		}
 		break;
 	}
@@ -183,8 +188,11 @@ void ProcessPacket(char *ptr)
 			//skelaton[other_id].message_time = GetTickCount();
 		}
 		else {
-			wcsncpy_s(npc[other_id - NPC_START].message, my_packet->message, 256);
-			npc[other_id - NPC_START].message_time = GetTickCount();
+			//wcsncpy_s(npc[other_id - NPC_START].message, my_packet->message, 256);
+			//npc[other_id - NPC_START].message_time = GetTickCount();
+			wcsncpy_s(monster[other_id - NPC_START].object.message, my_packet->message, 256);
+			monster[other_id - NPC_START].object.message_time = GetTickCount();
+			monster[other_id - NPC_START].setDir(player.x, player.y);
 		}
 		break;
 	}
@@ -199,6 +207,7 @@ void ProcessPacket(char *ptr)
 		g_myexp = myPacket->exp;
 		g_mylevel = myPacket->level;
 		g_myhp = myPacket->hp;
+		g_maxexp = myPacket->max_exp;
 		break;
 	}
 	default:
@@ -477,15 +486,16 @@ int Game_Init(void *parms)
 
 	// create skelaton bob
 	for (int i = 0; i < NUM_OF_NPC; ++i) {
-		if (!Create_BOB32(&npc[i], 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME))
+		BOB* npc = &monster[i].object;
+		if (!Create_BOB32(npc, 0, 0, TILE_WIDTH, TILE_WIDTH, 1, BOB_ATTR_SINGLE_FRAME))
 			return(0);
-		Load_Frame_BOB32(&npc[i], UNIT_TEXTURE, 0, 4, 0, BITMAP_EXTRACT_MODE_CELL);
+		Load_Frame_BOB32(npc, UNIT_TEXTURE, 0, 4, 0, BITMAP_EXTRACT_MODE_CELL);
 
 		// set up stating state of skelaton
-		Set_Animation_BOB32(&npc[i], 0);
-		Set_Anim_Speed_BOB32(&npc[i], 4);
-		Set_Vel_BOB32(&npc[i], 0, 0);
-		Set_Pos_BOB32(&npc[i], 0, 0);
+		Set_Animation_BOB32(npc, 0);
+		Set_Anim_Speed_BOB32(npc, 4);
+		Set_Vel_BOB32(npc, 0, 0);
+		Set_Pos_BOB32(npc, 0, 0);
 	}
 
 
@@ -551,8 +561,8 @@ int Game_Shutdown(void *parms)
 
 	// kill skelaton
 	for (int i = 0; i < MAX_USER; ++i) Destroy_BOB32(&skelaton[i]);
-	for (int i = 0; i < NUM_OF_NPC; ++i)
-		Destroy_BOB32(&npc[i]);
+	//for (int i = 0; i < NUM_OF_NPC; ++i)
+		//Destroy_BOB32(&npc[i]);
 
 	// shutdonw directdraw
 	DD_Shutdown();
@@ -594,7 +604,10 @@ int Game_Main(void *parms)
 	// draw the skelaton
 	Draw_BOB32(&player);
 	for (int i = 0; i < MAX_USER; ++i) Draw_BOB32(&skelaton[i]);
-	for (int i = 0; i < NUM_OF_NPC; ++i) Draw_BOB32(&npc[i]);
+	for (int i = 0; i < NUM_OF_NPC; ++i) {
+		monster[i].draw();
+		//Draw_BOB32(&npc[i]);
+	}
 
 	//drawEffect
 	if (attackEffect->now_render)
@@ -602,7 +615,7 @@ int Game_Main(void *parms)
 
 	// draw some text
 	wchar_t text[300];
-	wsprintf(text, L"Level : %2d HP : %3d exp : %3d  POS (%3d, %3d)", g_mylevel, g_myhp, g_myexp, player.x, player.y);
+	wsprintf(text, L"Level : %2d HP : %3d exp : %3d / %3d  POS (%3d, %3d)", g_mylevel, g_myhp, g_myexp, g_maxexp, player.x, player.y);
 	Draw_Text_D3D(text, 10, screen_height - 64, D3DCOLOR_ARGB(255, 255, 255, 255));
 	//Draw_Text_D3D(g_message, 10, screen_height - 128, D3DCOLOR_ARGB(255, color_r, color_g, color_b));
 	logMsg->draw();

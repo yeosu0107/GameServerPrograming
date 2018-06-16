@@ -32,6 +32,8 @@ void Server::Initialize()
 	CsvMap mapFile;
 	g_collisionMap = mapFile.getCollisionMap();
 	g_spawnPoint = mapFile.getSpawnPoint();
+	g_expTable = mapFile.getExpTable();
+	g_MaxLevel = g_expTable.size();
 
 	//g_clients.resize(NUM_OF_NPC, new Client());
 	wcout.imbue(locale("korean"));
@@ -225,6 +227,7 @@ void Server::SendStatPacket(int id)
 	p.exp = client->exp;
 	p.hp = client->hp;
 	p.level = client->level;
+	p.max_exp = g_expTable[client->level];
 
 	SendPacket(id, &p);
 }
@@ -985,7 +988,9 @@ void Server::PlayerAttack(int id)
 				ai->state = STATE_DEATH;
 				ai->is_use = false;
 				player->exp += g_clients[npc]->level;
-
+				if (player->exp >= g_expTable[player->level]) {
+					PlayerLevelUp(player);
+				}
 				add_timer(npc, -1, -1, NPC_RESPAWN_TYPE, 10);
 				SendStatPacket(id);
 				SendRemoveObject(id, npc);
@@ -997,6 +1002,17 @@ void Server::PlayerAttack(int id)
 			SendChatPacket(id, id, wide_string.c_str());
 		}
 	}
+}
+string levelmsg = "Player Level UP!";
+void Server::PlayerLevelUp(Client* player)
+{
+	player->level += 1;
+	player->exp = 0;
+
+	wstring wide_string;
+
+	wide_string.assign(levelmsg.begin(), levelmsg.end());
+	SendChatPacket(player->player_id, player->player_id, wide_string.c_str());
 }
 
 string hitMsg2 = "The Monster hit player | damage : ";

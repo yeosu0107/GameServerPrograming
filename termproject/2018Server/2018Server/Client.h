@@ -103,7 +103,7 @@ class Client : public Npc {
 public:
 	int player_id;
 	
-	int exp = 10;
+	int exp;
 	//for io func
 	SOCKET s;
 	EXOver exover;

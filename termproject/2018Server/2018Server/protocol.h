@@ -104,5 +104,6 @@ struct sc_packet_stat {
 	WORD hp;
 	WORD level;
 	DWORD exp;
+	DWORD max_exp;
 };
 #pragma pack (pop)

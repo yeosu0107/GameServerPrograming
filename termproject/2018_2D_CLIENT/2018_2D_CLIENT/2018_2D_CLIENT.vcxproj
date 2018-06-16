@@ -87,12 +87,14 @@
     <ClInclude Include="gpdumb1.h" />
     <ClInclude Include="mapObject.h" />
     <ClInclude Include="textManager.h" />
+    <ClInclude Include="monster.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2DClient.cpp" />
     <ClCompile Include="Effect.cpp" />
     <ClCompile Include="gpdumb1.cpp" />
     <ClCompile Include="mapObject.cpp" />
+    <ClCompile Include="monster.cpp" />
     <ClCompile Include="textManager.cpp" />
   </ItemGroup>
   <ItemGroup>
