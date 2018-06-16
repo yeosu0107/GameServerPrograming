@@ -71,6 +71,8 @@ BOB         skelaton[MAX_USER];     // the other player skelaton
 
 MapObject* mapObject;
 Effect* attackEffect;
+SkillEffect* skillEffect1;
+SkillEffect* skillEffect2;
 textManager* logMsg;
 
 #define TILE_WIDTH 32
@@ -81,6 +83,8 @@ textManager* logMsg;
 #define EXPLOSION_TEXTURE 3
 #define MONSTER_TEXTURE 4
 #define CHARACTER_TEXTURE 5
+#define SKILL1_TEXTURE 6
+#define SKILL2_TEXTURE 7
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -302,23 +306,43 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 		prevInputTime = timeGetTime();
 		int x = 0, y = 0;
 		bool attack = false;
+		bool skill1 = false;
+		bool skill2 = false;
 		if (wparam == VK_RIGHT)	x += 1;
 		if (wparam == VK_LEFT)	x -= 1;
 		if (wparam == VK_UP)	y -= 1;
 		if (wparam == VK_DOWN)	y += 1;
 		if (wparam == VK_SPACE) attack = true;
+		if (wparam == 81) skill1 = true; //q
+		if (wparam == 69) skill2 = true; //e
 		cs_packet_up *my_packet = reinterpret_cast<cs_packet_up *>(send_buffer);
 		my_packet->size = sizeof(my_packet);
 		send_wsabuf.len = sizeof(my_packet);
 		DWORD iobyte;
-		if (!attack) {
+		if(attack == true){
+			my_packet->type = CS_ATTACK;
+			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
+			attackEffect->update(player.x, player.y);
+		}
+		else if (skill1 == true) {
+			my_packet->type = CS_SKILL1;
+			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
+			skillEffect1->update(player.x, player.y);
+		}
+		else if (skill2 == true) {
+			my_packet->type = CS_SKILL2;
+			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
+			skillEffect2->update(player.x, player.y);
+		}
+		else {
+			//이동 이벤트
 			if (0 != x) {
 				if (1 == x) my_packet->type = CS_RIGHT;
 				else my_packet->type = CS_LEFT;
 				WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 				/*if (ret) {
-					int error_code = WSAGetLastError();
-					printf("Error while sending packet [%d]", error_code);
+				int error_code = WSAGetLastError();
+				printf("Error while sending packet [%d]", error_code);
 				}*/
 			}
 			if (0 != y) {
@@ -326,11 +350,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 				else my_packet->type = CS_UP;
 				WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 			}
-		}
-		else {
-			my_packet->type = CS_ATTACK;
-			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
-			attackEffect->update(player.x, player.y);
 		}
 
 
@@ -490,6 +509,8 @@ int Game_Init(void *parms)
 	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
 	Load_Texture(L"explosion.png", EXPLOSION_TEXTURE, 240, 41);
 	Load_Texture(L"charSet.png", CHARACTER_TEXTURE, 384, 256);
+	Load_Texture(L"skill1.png", SKILL1_TEXTURE, 320, 448);
+	Load_Texture(L"skill2.png", SKILL2_TEXTURE, 320, 320);
 
 	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 12, BOB_ATTR_MULTI_ANIM)) return(0);
 	
@@ -518,6 +539,8 @@ int Game_Init(void *parms)
 
 	mapObject = new MapObject(MAP_BACKTEXTURE);
 	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
+	skillEffect1 = new SkillEffect(SKILL1_TEXTURE, 64, 64, 5, 7);
+	skillEffect2 = new SkillEffect(SKILL2_TEXTURE, 64, 64, 5, 5);
 
 	// create skelaton bob
 	for (int i = 0; i < MAX_USER; ++i) {
@@ -644,7 +667,7 @@ int Game_Main(void *parms)
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
 	
 	mapObject->draw();
-
+	
 	g_pSprite->End();
 	g_pSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
 
@@ -660,10 +683,14 @@ int Game_Main(void *parms)
 		monster[i].draw();
 		//Draw_BOB32(&npc[i]);
 	}
-
+	
 	//drawEffect
 	if (attackEffect->now_render)
 		attackEffect->draw();
+	if (skillEffect1->now_render)
+		skillEffect1->draw();
+	if (skillEffect2->now_render)
+		skillEffect2->draw();
 
 	// draw some text
 	wchar_t text[300];
@@ -672,6 +699,7 @@ int Game_Main(void *parms)
 	//Draw_Text_D3D(g_message, 10, screen_height - 128, D3DCOLOR_ARGB(255, color_r, color_g, color_b));
 	logMsg->draw();
 	g_pSprite->End();
+
 	g_pd3dDevice->EndScene();
 
 	// flip the surfaces

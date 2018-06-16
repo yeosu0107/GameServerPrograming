@@ -9,10 +9,11 @@ using namespace std;
 
 const int NONE_TYPE = 0;
 const int MOVE_AROUND_TYPE = 1;
-const int MOVE_DIR_TYPE = 2;
+const int MOVE_AI_TYPE = 2;
 const int DB_UPDATE_TYPE = 3;
 const int NPC_RESPAWN_TYPE = 4;
 const int NPC_ATTACK_TYPE = 5;
+const int MOVE_DIR_TYPE = 6;
 
 
 
@@ -69,6 +70,7 @@ private:
 
 	
 	unordered_set<int> g_zone[11][11];
+	mutex g_mutex[11][11];
 
 	int (*g_collisionMap)[300];
 	queue<spawnPoint> g_spawnPoint;
@@ -104,7 +106,8 @@ public:
 
 	void add_timer(int id, int target, int info, int type, float time);
 	void MoveNpc(int id);
-	void MoveDirNpc(int id, int target);
+	void MoveAINpc(int id, int target);
+	void MoveDirNPC(int id, int dir, int target);
 	void WakeUpNPC(int id);
 	void NPC_AI(int npc, int player);
 	void RespawnNPC(int npc);
@@ -123,6 +126,7 @@ public:
 
 	bool nearArea(int id, int target);
 	void PlayerAttack(int id);
+	void PlayerSkill(int id);
 	void PlayerLevelUp(Client* player);
 	void NPCAttack(int id, int target);
 };

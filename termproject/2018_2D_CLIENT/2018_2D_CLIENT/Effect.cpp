@@ -40,3 +40,43 @@ void Effect::draw()
 	g_pSprite->Draw(g_textures[texture_id], &drawRect, NULL, &pos4,
 		D3DCOLOR_ARGB(255, 255, 255, 255));
 }
+
+SkillEffect::SkillEffect(int id, int width, int height, int num_x, int num_y)
+{
+	texture_id = id;
+	nFrame_x = num_x;
+	nFrame_y = num_y;
+	m_width = width;
+	m_height = height;
+}
+
+void SkillEffect::update(int x, int y)
+{
+	int xPos = (x - g_left_x) * TILE_WIDTH - 8;
+	int yPos = (y - g_top_y) * TILE_WIDTH - 8;
+
+	pos = D3DXVECTOR3(xPos, yPos, 0);
+
+	now_render = true;
+	now_frame_x = 0;
+	now_frame_y = 0;
+}
+
+void SkillEffect::draw()
+{
+	now_frame_x += 1;
+	if (now_frame_x > nFrame_x - 1) {
+		now_frame_x = 0;
+		now_frame_y += 1;
+		if (now_frame_y > nFrame_y - 1) {
+			now_frame_y = 0;
+			now_render = false;
+		}
+	}
+	drawRect = { now_frame_x * m_width, now_frame_y * m_height,
+		(now_frame_x + 1) * m_width, (now_frame_y + 1) * m_height };
+
+	g_pSprite->Draw(g_textures[texture_id], &drawRect, NULL, &pos,
+		D3DCOLOR_ARGB(255, 255, 255, 255));
+
+}

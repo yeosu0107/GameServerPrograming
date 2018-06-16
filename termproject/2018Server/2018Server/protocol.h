@@ -24,6 +24,8 @@
 #define CS_RANDOM 6
 #define CS_ATTACK 7
 #define CS_GOTOWN 8
+#define CS_SKILL1 9
+#define CS_SKILL2 10
 
 #define SC_POS           1
 #define SC_PUT_PLAYER    2

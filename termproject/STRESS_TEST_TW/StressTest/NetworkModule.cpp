@@ -19,7 +19,7 @@ using namespace chrono;
 
 
 static bool isHotspot = false;
-static int MAX_TEST = 500;
+static int MAX_TEST = 1000;
 const static int INVALID_ID = -1;
 
 
@@ -93,21 +93,25 @@ void DisconnectClient(int ci)
 void ProcessPacket(int ci, unsigned char packet[])
 {
 	switch (packet[1]) {
-	case SC_POS: {
+	case SC_POS:
+	{
 		sc_packet_pos *pos_packet = reinterpret_cast<sc_packet_pos *>(packet);
 		if (INVALID_ID == g_clients[ci].id) g_clients[ci].id = ci;
 		if (ci == pos_packet->id) {
 			g_clients[ci].x = pos_packet->x;
 			g_clients[ci].y = pos_packet->y;
 		}
-		} break;
+	}
+	break;
 	case SC_PUT_PLAYER: break;
 	case SC_REMOVE_PLAYER: break;
 	case SC_CHAT: break;
 	default:
 		//std::cout << "Unknown Packet Type from Server : " << ci << std::endl;
-		while (true);
+		//while (true);
+		break;
 	}
+	
 }
 
 void Worker_Thread()
@@ -236,11 +240,12 @@ void Adjust_Number_Of_Client()
 	g_clients[num_connections].connect = true;
 	num_connections++;
 
-	if (isHotspot == false) {
+	/*if (isHotspot == false) {
 		cs_packet_up my_packet;
+		my_packet.size = sizeof(my_packet);
 		my_packet.type = CS_RANDOM;
 		SendPacket(num_connections-1, &my_packet);
-	}
+	}*/
 }
 
 

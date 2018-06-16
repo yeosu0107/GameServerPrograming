@@ -31,8 +31,12 @@ void ScriptEngine::display_error(int err)
 
 void ScriptEngine::eventPlayerMove(int player)
 {
+	if (L == nullptr)
+		return;
 	lua_getglobal(L, "event_player_move");
 	lua_pushnumber(L, player);
-	lua_pcall(L, 1, 1, 0);
+	int error = lua_pcall(L, 1, 1, 0);
+	if (error > 0)
+		display_error(error);
 	lua_pop(L, 1);
 }

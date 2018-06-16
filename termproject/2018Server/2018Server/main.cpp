@@ -49,8 +49,12 @@ void WorkerThread()
 			Server::getInstance()->NPC_AI((int)key, (int)exover->event_target);
 			delete exover;
 		}
+		else if (exover->event_type == EV_MOVE_AI) {
+			Server::getInstance()->MoveAINpc((int)key, (int)exover->event_target);
+			delete exover;
+		}
 		else if (exover->event_type == EV_MOVE_DIR) {
-			Server::getInstance()->MoveDirNpc((int)key, (int)exover->event_target);
+			Server::getInstance()->MoveDirNPC((int)key, exover->event_info, (int)exover->event_target);
 			delete exover;
 		}
 		else if (exover->event_type == EV_NPC_RESPAWN) {
@@ -114,11 +118,19 @@ void TimerThread() {
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
 			}
+			else if (nowEvent->type == MOVE_AI_TYPE) {
+				EXOver* over = new EXOver();
+				over->event_type = EV_MOVE_AI;
+				over->event_target = nowEvent->target;
+
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					0, nowEvent->id, &over->wsaover);
+			}
 			else if (nowEvent->type == MOVE_DIR_TYPE) {
 				EXOver* over = new EXOver();
-				over->event_type = EV_MOVE_DIR;
-				over->event_target = nowEvent->target;
 				over->event_info = nowEvent->info;
+				over->event_target = nowEvent->target;
+				over->event_type = EV_MOVE_DIR;
 
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);

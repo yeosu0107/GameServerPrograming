@@ -82,7 +82,10 @@ bool Server::CanSee(int cl1, int cl2) {
 void Server::addViewList(unordered_set<int>& viewList, const int clientID, const int x, const int y) {
 	//해당 존에 있는 클라이언트들을 viewList에 인서트
 	if (!isNPC(clientID)) {
-		for (const int& i : g_zone[y][x]) {
+		g_mutex[y][x].lock();
+		unordered_set<int> tmpZone = g_zone[y][x];
+		g_mutex[y][x].unlock();
+		for (const int& i : tmpZone) {
 			if (i == clientID) continue;
 			if (!g_clients[i]->is_use) continue;
 			if (!CanSee(clientID, i)) continue;
@@ -95,7 +98,10 @@ void Server::addViewList(unordered_set<int>& viewList, const int clientID, const
 		}
 	}
 	else {
-		for (const int& i : g_zone[y][x]) {
+		g_mutex[y][x].lock();
+		unordered_set<int> tmpZone = g_zone[y][x];
+		g_mutex[y][x].unlock();
+		for (const int& i : tmpZone) {
 			if (i == clientID) continue;
 			if (isNPC(i)) continue;
 			if (!g_clients[i]->is_use) continue;
@@ -310,7 +316,14 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		client->y = rand() % BOARD_HEIGHT;
 		break;
 	case CS_ATTACK:
+		PlayerAttack(clientID);
 		//printf("recv attack message : player %d\n", clientID);
+		return;
+	case CS_SKILL1:
+		PlayerSkill(clientID);
+		return;
+	case CS_SKILL2:
+		//printf("press skill2 : player %d\n", clientID);
 		break;
 	case CS_GOTOWN:
 		client->x = 129;
@@ -428,9 +441,6 @@ void Server::ProcessPacket(int clientID, char* packet) {
 
 		SendPacket(clientID, &posPacket);
 	}
-	else {
-		PlayerAttack(clientID);
-	}
 }
 
 void Server::AcceptAndSearchClient(SOCKET & g_socket)
@@ -538,8 +548,10 @@ void Server::AcceptNewClient(Client* client, int new_key)
 
 	newClient->zone_x = p.x / ZONE_INTERVAL;
 	newClient->zone_y = p.y / ZONE_INTERVAL;
-
+	//g_mutex[newClient->zone_y][newClient->zone_x].lock();
 	g_zone[newClient->zone_y][newClient->zone_x].emplace(new_key);
+	//unordered_set<int> tmpList = g_zone[newClient->zone_y][newClient->zone_x];
+	//g_mutex[newClient->zone_y][newClient->zone_x].unlock();
 	unordered_set<int> nearList = ProcessNearZone(new_key);
 	//나의 접속을 다른 플레이어에게 알림 (나를 포함)
 	//같은 존 & 인접 존에 있는 플레이어에만 알림
@@ -578,6 +590,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 	}
 
 	SendStatPacket(new_key); //플레이어 스텟 전송
+	printf("client input : %d\n", new_key);
 }
 
 void Server::SearchClientID(BYTE* id, Client* client, int index)
@@ -704,7 +717,7 @@ void Server::MoveNpc(int key)
 	}
 }
 
-void Server::MoveDirNpc(int key, int target)
+void Server::MoveAINpc(int key, int target)
 {
 	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
 	thisNPC->ai_work = true;
@@ -809,8 +822,8 @@ void Server::MoveDirNpc(int key, int target)
 			}
 		}
 	}
-	dir_x = g_clients[target]->x - g_clients[key]->x;
-	dir_y = g_clients[target]->y - g_clients[key]->y;
+	//dir_x = g_clients[target]->x - g_clients[key]->x;
+	//dir_y = g_clients[target]->y - g_clients[key]->y;
 	//if ((dir_x*dir_x <= 1) && (dir_y*dir_y <= 1)) {
 	//	//플레이어 공격
 	//	/*wchar_t tmp[7] = L"attack";
@@ -820,7 +833,7 @@ void Server::MoveDirNpc(int key, int target)
 	//	//g_clients[key]->ai_work = false;
 	//}
 
-	add_timer(key, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
+	add_timer(key, target, -1, MOVE_AI_TYPE, 1); //계속 플레이어에게 이동
 	
 	
 	//else {
@@ -829,6 +842,67 @@ void Server::MoveDirNpc(int key, int target)
 	//	SendChatPacket(target, key, tmp);
 	//	//add_timer(key, -1, -1, MOVE_TYPE, 2);
 	//}
+}
+
+void Server::MoveDirNPC(int key, int dir, int target)
+{
+	Npc* thisNPC = reinterpret_cast<Npc*>(g_clients[key]);
+	thisNPC->ai_work = true;
+
+	if (thisNPC->state == STATE_DEATH) {
+		return;
+	}
+	thisNPC->state = STATE_MOVE;
+	switch (dir) {
+	case CS_UP:
+		thisNPC->y -= 1;
+		break;
+	case CS_DOWN:
+		thisNPC->y += 1;
+		break;
+	case CS_LEFT:
+		thisNPC->x -= 1;
+		break;
+	case CS_RIGHT:
+		thisNPC->x += 1;
+		break;
+	}
+
+	sc_packet_pos posPacket;
+	posPacket.id = key;
+	posPacket.size = sizeof(sc_packet_pos);
+	posPacket.type = SC_POS;
+	posPacket.x = thisNPC->x;
+	posPacket.y = thisNPC->y;
+
+	thisNPC->vlm.lock();
+	unordered_set<int> new_viewList = thisNPC->viewlist;
+	thisNPC->vlm.unlock();
+
+	for (auto& id : new_viewList) {
+		Client* target = reinterpret_cast<Client*>(g_clients[id]);
+		if (CanSee(key, id)) {
+			target->vlm.lock();
+			if (target->viewlist.count(key) == 0) {
+				target->viewlist.emplace(key);
+				target->vlm.unlock();
+				SendPutObject(id, key);
+			}
+			else {
+				target->vlm.unlock();
+				SendPacket(id, &posPacket);
+			}
+		}
+		else {
+			if (target->viewlist.count(key) != 0) {
+				target->vlm.lock();
+				target->viewlist.erase(key);
+				target->vlm.unlock();
+				SendRemoveObject(id, key);
+			}
+		}
+	}
+	add_timer(key, target, -1, MOVE_AI_TYPE, 1); //계속 플레이어에게 이동
 }
 
 void Server::WakeUpNPC(int id)
@@ -988,7 +1062,7 @@ void Server::PlayerAttack(int id)
 			g_clients[npc]->hp -= damage;
 			Npc* ai = reinterpret_cast<Npc*>(g_clients[npc]);
 			if (ai->state == STATE_IDLE)
-				add_timer(npc, id, -1, MOVE_DIR_TYPE, 0);
+				add_timer(npc, id, -1, MOVE_AI_TYPE, 0);
 			string msg;
 			wstring wide_string;
 			if (ai->hp <= 0) {
@@ -1008,6 +1082,55 @@ void Server::PlayerAttack(int id)
 			}
 			wide_string.assign(msg.begin(), msg.end());
 			SendChatPacket(id, id, wide_string.c_str(), INFO_ATTACK);
+		}
+	}
+}
+void Server::PlayerSkill(int id)
+{
+	Client* player = reinterpret_cast<Client*>(g_clients[id]);
+	player->vlm.lock();
+	unordered_set<int> nearList = player->viewlist;
+	player->vlm.unlock();
+	char damage = g_clients[id]->level * 5 + rand() % 3;
+	for (auto& npc : nearList) {
+		if (g_clients[npc]->is_use == false)
+			continue;
+
+		if (nearArea(id, npc) == true) {
+			g_clients[npc]->hp -= damage;
+			Npc* ai = reinterpret_cast<Npc*>(g_clients[npc]);
+			if (ai->state == STATE_IDLE)
+				add_timer(npc, id, -1, MOVE_AI_TYPE, 0);
+			string msg;
+			wstring wide_string;
+			if (ai->hp <= 0) {
+				msg = killMsg + to_string(g_clients[npc]->level);
+				ai->state = STATE_DEATH;
+				ai->is_use = false;
+				player->exp += g_clients[npc]->level;
+				if (player->exp >= g_expTable[player->level]) {
+					PlayerLevelUp(player);
+				}
+				add_timer(npc, -1, -1, NPC_RESPAWN_TYPE, 10);
+				SendStatPacket(id);
+				SendRemoveObject(id, npc);
+			}
+			else {
+				msg = hitMsg + to_string(damage);
+			}
+			wide_string.assign(msg.begin(), msg.end());
+			SendChatPacket(id, id, wide_string.c_str(), INFO_ATTACK);
+
+			int dir_x = player->x - g_clients[npc]->x;
+			int dir_y = player->y - g_clients[npc]->y;
+			if (dir_x>= 1) 
+				add_timer(npc, id, CS_LEFT, MOVE_DIR_TYPE, 0);
+			else if(dir_x<=-1)
+				add_timer(npc, id, CS_RIGHT, MOVE_DIR_TYPE, 0);
+			else if(dir_y>=1)
+				add_timer(npc, id, CS_UP, MOVE_DIR_TYPE, 0);
+			else if(dir_y<=-1)
+				add_timer(npc, id, CS_DOWN, MOVE_DIR_TYPE, 0);
 		}
 	}
 }
@@ -1058,7 +1181,7 @@ void Server::NPCAttack(int id, int target)
 		SendStatPacket(target);
 	}
 	else {
-		add_timer(id, target, -1, MOVE_DIR_TYPE, 1); //계속 플레이어에게 이동
+		add_timer(id, target, -1, MOVE_AI_TYPE, 1); //계속 플레이어에게 이동
 	}
 }
 
@@ -1087,7 +1210,7 @@ int CAPI_sendMsg(lua_State * L)
 	char* msg = (char*)lua_tostring(L, -1);
 	int chatter = (int)lua_tointeger(L, -2);
 	int player = (int)lua_tointeger(L, -3);
-	lua_pop(L, 3);
+	lua_pop(L, 4);
 
 	wchar_t buf[MAX_STR_SIZE];
 	size_t len = strlen(msg);
@@ -1108,6 +1231,6 @@ int CAPI_moveNPC(lua_State * L)
 	int player = (int)lua_tointeger(L, -2);
 	Server::getInstance()->g_clients[npc]->ai_work = true;
 	lua_pop(L, 3);
-	Server::getInstance()->add_timer(npc, player, -1, MOVE_DIR_TYPE, 1);
+	Server::getInstance()->add_timer(npc, player, -1, MOVE_AI_TYPE, 1);
 	return 0;
 }

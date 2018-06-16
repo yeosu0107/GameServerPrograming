@@ -28,3 +28,23 @@ struct Effect
 	void update(int x, int y);
 	void draw();
 };
+
+struct SkillEffect
+{
+	RECT drawRect;
+	int texture_id;
+	D3DXVECTOR3 pos = D3DXVECTOR3(0, 0, 0);
+
+	unsigned char nFrame_x;
+	unsigned char nFrame_y;
+	unsigned char now_frame_x;
+	unsigned char now_frame_y;
+	int m_width, m_height;
+
+	bool now_render = false;
+
+	SkillEffect(int id, int width, int height, int num_x, int num_y);
+
+	void update(int x, int y);
+	void draw();
+};
