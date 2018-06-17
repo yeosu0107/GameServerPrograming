@@ -34,6 +34,7 @@
 #define SC_DUPLICATON_PLAYER 5
 #define SC_ATTACK 6
 #define SC_PLAYER_STAT 7
+#define SC_PLAYER_SKILL 8
 
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
@@ -114,5 +115,11 @@ struct sc_packet_stat {
 	WORD level;
 	DWORD exp;
 	DWORD max_exp;
+};
+
+struct sc_packet_skill {
+	BYTE size;
+	BYTE type;
+	DWORD kind;
 };
 #pragma pack (pop)

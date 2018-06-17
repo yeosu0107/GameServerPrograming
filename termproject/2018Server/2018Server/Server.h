@@ -97,6 +97,7 @@ public:
 	void SendRemoveObject(int client, int object);
 	void SendChatPacket(int to, int from, const wchar_t* msg, int info);
 	void SendStatPacket(int id);
+	void SendSkillPacket(int id, int kind);
 	void DisconnectPlayer(int id);
 	void ProcessPacket(int clientID, char* packet);
 
@@ -127,8 +128,12 @@ public:
 	bool nearArea(int id, int target);
 	void PlayerAttack(int id);
 	void PlayerSkill(int id);
+	void PlayerSkill2(int id);
 	void PlayerLevelUp(Client* player);
 	void NPCAttack(int id, int target);
+
+	void BossSkill(int id, int target);
+	void BossSkill2(int id);
 };
 
 int CAPI_getX(lua_State* L);

@@ -58,6 +58,12 @@ void Server::Initialize()
 		lua_register(ai->getInstance(), "API_send_msg", CAPI_sendMsg);
 		lua_register(ai->getInstance(), "API_npc_move", CAPI_moveNPC);
 		g_clients.emplace_back(new Npc(xPos, yPos, ai, info.type));
+		if (info.type == MONSTER_BOSS) {
+			Npc* boss = reinterpret_cast<Npc*>(g_clients[i]);
+			lua_getglobal(boss->aiScript->getInstance(), "set_dist");
+			lua_pushnumber(boss->aiScript->getInstance(), 10);
+			lua_pcall(boss->aiScript->getInstance(), 1, 0, 0);
+		}
 	}
 	cout << "Npc Info Initialize Complete" << endl;
 
@@ -246,6 +252,16 @@ void Server::SendStatPacket(int id)
 	SendPacket(id, &p);
 }
 
+void Server::SendSkillPacket(int id, int kind)
+{
+	sc_packet_skill p;
+	p.size = sizeof(p);
+	p.type = SC_PLAYER_SKILL;
+	p.kind = kind;
+
+	SendPacket(id, &p);
+}
+
 void Server::DisconnectPlayer(int id) {
 	Client* now = reinterpret_cast<Client*>(g_clients[id]);
 
@@ -329,8 +345,9 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		PlayerSkill(clientID);
 		return;
 	case CS_SKILL2:
+		PlayerSkill2(clientID);
 		//printf("press skill2 : player %d\n", clientID);
-		break;
+		return;
 	case CS_GOTOWN:
 		client->x = 129;
 		client->y = 191;
@@ -1057,6 +1074,11 @@ string killMsg = "The Player kill the monster | exp gain : ";
 void Server::PlayerAttack(int id)
 {
 	Client* player = reinterpret_cast<Client*>(g_clients[id]);
+
+	if (GetTickCount() - player->coolTime[0] < 1000)
+		return;
+	player->coolTime[0] = GetTickCount();
+	SendSkillPacket(id, 0);
 	player->vlm.lock();
 	unordered_set<int> nearList = player->viewlist;
 	player->vlm.unlock();
@@ -1092,9 +1114,24 @@ void Server::PlayerAttack(int id)
 		}
 	}
 }
+
+string coolMsg = "skill cool time is remained ";
+string coolMsg2 = "sec";
+
 void Server::PlayerSkill(int id)
 {
 	Client* player = reinterpret_cast<Client*>(g_clients[id]);
+
+	DWORD tmp = GetTickCount() - player->coolTime[1];
+	if (tmp < 5000) {
+		string msg = coolMsg + to_string((5000 - tmp) / 1000) + coolMsg2;
+		wstring wide_string;
+		wide_string.assign(msg.begin(), msg.end());
+		SendChatPacket(id, id, wide_string.c_str(), INFO_NONE);
+		return;
+	}
+	player->coolTime[1] = GetTickCount();
+	SendSkillPacket(id, 1);
 	player->vlm.lock();
 	unordered_set<int> nearList = player->viewlist;
 	player->vlm.unlock();
@@ -1140,6 +1177,24 @@ void Server::PlayerSkill(int id)
 				add_timer(npc, id, CS_DOWN, MOVE_DIR_TYPE, 0);
 		}
 	}
+}
+void Server::PlayerSkill2(int id)
+{
+	Client* player = reinterpret_cast<Client*>(g_clients[id]);
+
+	DWORD tmp = GetTickCount() - player->coolTime[2];
+	if (tmp < 5000) {
+		string msg = coolMsg + to_string((5000 - tmp) / 1000) + coolMsg2;
+		wstring wide_string;
+		wide_string.assign(msg.begin(), msg.end());
+		SendChatPacket(id, id, wide_string.c_str(), INFO_NONE);
+		return;
+	}
+	player->coolTime[2] = GetTickCount();
+	SendSkillPacket(id, 2);
+	g_clients[id]->hp += g_clients[id]->level * 2;
+	if (g_clients[id]->hp > g_clients[id]->level * 20)
+		g_clients[id]->hp = g_clients[id]->level * 20;
 }
 string levelmsg = "Player Level UP!";
 void Server::PlayerLevelUp(Client* player)
@@ -1190,6 +1245,14 @@ void Server::NPCAttack(int id, int target)
 	else {
 		add_timer(id, target, -1, MOVE_AI_TYPE, 1); //계속 플레이어에게 이동
 	}
+}
+
+void Server::BossSkill(int id, int target)
+{
+}
+
+void Server::BossSkill2(int id)
+{
 }
 
 int CAPI_getX(lua_State * L)

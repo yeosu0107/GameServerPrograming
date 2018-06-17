@@ -52,8 +52,8 @@ SkillEffect::SkillEffect(int id, int width, int height, int num_x, int num_y)
 
 void SkillEffect::update(int x, int y)
 {
-	int xPos = (x - g_left_x) * TILE_WIDTH - 8;
-	int yPos = (y - g_top_y) * TILE_WIDTH - 8;
+	int xPos = (x - g_left_x) * TILE_WIDTH - m_width/4 - 8;
+	int yPos = (y - g_top_y) * TILE_WIDTH - m_width/4 - 8;
 
 	pos = D3DXVECTOR3(xPos, yPos, 0);
 

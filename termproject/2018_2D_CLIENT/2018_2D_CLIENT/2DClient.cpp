@@ -244,6 +244,20 @@ void ProcessPacket(char *ptr)
 		g_maxexp = myPacket->max_exp;
 		break;
 	}
+	case SC_PLAYER_SKILL:
+	{
+		sc_packet_skill* myPacket = reinterpret_cast<sc_packet_skill*>(ptr);
+		if (myPacket->kind == 0) {
+			attackEffect->update(player.x, player.y);
+		}
+		else if (myPacket->kind == 1) {
+			skillEffect1->update(player.x, player.y);
+		}
+		else if (myPacket->kind == 2) {
+			skillEffect2->update(player.x, player.y);
+		}
+	}
+	break;
 	default:
 		printf("Unknown PACKET type [%d]\n", ptr[1]);
 	}
@@ -322,17 +336,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 		if(attack == true){
 			my_packet->type = CS_ATTACK;
 			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
-			attackEffect->update(player.x, player.y);
+			//attackEffect->update(player.x, player.y);
 		}
 		else if (skill1 == true) {
 			my_packet->type = CS_SKILL1;
 			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
-			skillEffect1->update(player.x, player.y);
+			//skillEffect1->update(player.x, player.y);
 		}
 		else if (skill2 == true) {
 			my_packet->type = CS_SKILL2;
 			WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
-			skillEffect2->update(player.x, player.y);
+			//skillEffect2->update(player.x, player.y);
 		}
 		else {
 			//이동 이벤트
@@ -509,8 +523,8 @@ int Game_Init(void *parms)
 	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
 	Load_Texture(L"explosion.png", EXPLOSION_TEXTURE, 240, 41);
 	Load_Texture(L"charSet.png", CHARACTER_TEXTURE, 384, 256);
-	Load_Texture(L"skill1.png", SKILL1_TEXTURE, 320, 448);
-	Load_Texture(L"skill2.png", SKILL2_TEXTURE, 320, 320);
+	Load_Texture(L"skill1.png", SKILL1_TEXTURE, 640, 896);
+	Load_Texture(L"skill2.png", SKILL2_TEXTURE, 640, 640);
 
 	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 12, BOB_ATTR_MULTI_ANIM)) return(0);
 	
@@ -539,8 +553,8 @@ int Game_Init(void *parms)
 
 	mapObject = new MapObject(MAP_BACKTEXTURE);
 	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
-	skillEffect1 = new SkillEffect(SKILL1_TEXTURE, 64, 64, 5, 7);
-	skillEffect2 = new SkillEffect(SKILL2_TEXTURE, 64, 64, 5, 5);
+	skillEffect1 = new SkillEffect(SKILL1_TEXTURE, 128, 128, 5, 7);
+	skillEffect2 = new SkillEffect(SKILL2_TEXTURE, 128	, 128, 5, 5);
 
 	// create skelaton bob
 	for (int i = 0; i < MAX_USER; ++i) {

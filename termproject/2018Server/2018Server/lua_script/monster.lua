@@ -5,6 +5,10 @@ function set_myid(x)
 	myid = x;
 end
 
+function set_dist(x)
+	dist = x;
+end
+
 function abs( len )
 	if(len < dist) then
 		if(len > -dist) then
