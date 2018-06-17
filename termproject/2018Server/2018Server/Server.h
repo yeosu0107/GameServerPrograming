@@ -135,6 +135,8 @@ public:
 
 	void BossSkill(int id, int target);
 	void BossSkill2(int id, int target);
+
+	bool CheckPlayerLevel(Client* player);
 };
 
 int CAPI_getX(lua_State* L);

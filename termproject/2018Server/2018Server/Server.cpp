@@ -357,9 +357,17 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		return;
 	}
 	if (p->type < CS_ATTACK) {
+		if (!CheckPlayerLevel(client)) {
+			wchar_t tmp[21] = L"Can't go. Be Strong!";
+			SendChatPacket(clientID, clientID, tmp, INFO_ATTACK);
+			client->x = origin_x;
+			client->y = origin_y;
+			return;
+		}
 		if (checkCollisionMap(clientID)) {
 			client->x = origin_x;
 			client->y = origin_y;
+			return;
 		}
 		int prev_x = client->zone_x;
 		int prev_y = client->zone_y;
@@ -1336,6 +1344,27 @@ void Server::BossSkill2(int id, int target)
 	}
 
 	add_timer(id, target, 1, BOSS_SKILL, 5);
+}
+
+bool Server::CheckPlayerLevel(Client* player)
+{
+	int xPos = player->x;
+	int yPos = player->y;
+	int level = player->level;
+
+	if (xPos > 127 && xPos < 131 && yPos == 95) {
+		if (level < 11)
+			return false;
+	}
+	else if (xPos > 125 && xPos < 129 && yPos == 234) {
+		if (level < 30)
+			return false;
+	}
+	else if (xPos == 216 && yPos > 189 && yPos < 193) {
+		if (level < 21)
+			return false;
+	}
+	return true;
 }
 
 int CAPI_getX(lua_State * L)
