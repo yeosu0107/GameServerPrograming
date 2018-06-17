@@ -14,6 +14,7 @@ const int DB_UPDATE_TYPE = 3;
 const int NPC_RESPAWN_TYPE = 4;
 const int NPC_ATTACK_TYPE = 5;
 const int MOVE_DIR_TYPE = 6;
+const int BOSS_SKILL = 7;
 
 
 
@@ -133,7 +134,7 @@ public:
 	void NPCAttack(int id, int target);
 
 	void BossSkill(int id, int target);
-	void BossSkill2(int id);
+	void BossSkill2(int id, int target);
 };
 
 int CAPI_getX(lua_State* L);

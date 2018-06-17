@@ -35,6 +35,7 @@
 #define SC_ATTACK 6
 #define SC_PLAYER_STAT 7
 #define SC_PLAYER_SKILL 8
+#define SC_BOSS_SKILL 9
 
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
@@ -121,5 +122,13 @@ struct sc_packet_skill {
 	BYTE size;
 	BYTE type;
 	DWORD kind;
+};
+
+struct sc_packet_boss {
+	BYTE size;
+	BYTE type;
+	DWORD kind;
+	UINT x;
+	UINT y;
 };
 #pragma pack (pop)

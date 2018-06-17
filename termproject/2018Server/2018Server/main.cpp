@@ -65,6 +65,15 @@ void WorkerThread()
 			Server::getInstance()->NPCAttack((int)key, (int)exover->event_target);
 			delete exover;
 		}
+		else if (exover->event_type == EV_BOSS_SKILL) {
+			if (exover->event_info == 0) {
+				Server::getInstance()->BossSkill((int)key, (int)exover->event_target);
+			}
+			else if (exover->event_info == 1) {
+				Server::getInstance()->BossSkill2((int)key, (int)exover->event_target);
+			}
+			delete exover;
+		}
 		else {
 			delete exover;
 			//cout << "Unknown Event Error in Worker Thread\n";
@@ -146,6 +155,14 @@ void TimerThread() {
 				EXOver* over = new EXOver();
 				over->event_type = EV_NPC_ATTACK;
 				over->event_target = nowEvent->target;
+				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
+					0, nowEvent->id, &over->wsaover);
+			}
+			else if (nowEvent->type == BOSS_SKILL) {
+				EXOver* over = new EXOver();
+				over->event_type = EV_BOSS_SKILL;
+				over->event_target = nowEvent->target;
+				over->event_info = nowEvent->info;
 				PostQueuedCompletionStatus(*Server::getInstance()->getIOCP(),
 					0, nowEvent->id, &over->wsaover);
 			}

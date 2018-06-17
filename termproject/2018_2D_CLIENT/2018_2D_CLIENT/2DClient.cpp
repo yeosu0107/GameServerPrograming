@@ -73,6 +73,8 @@ MapObject* mapObject;
 Effect* attackEffect;
 SkillEffect* skillEffect1;
 SkillEffect* skillEffect2;
+SkillEffect* bossEffect[5];
+int e_index = 0;
 textManager* logMsg;
 
 #define TILE_WIDTH 32
@@ -85,6 +87,8 @@ textManager* logMsg;
 #define CHARACTER_TEXTURE 5
 #define SKILL1_TEXTURE 6
 #define SKILL2_TEXTURE 7
+#define BOSS_SKILL1_TEXTURE 8
+#define BOSS_SKILL2_TEXTURE 9
 
 SOCKET g_mysocket;
 WSABUF	send_wsabuf;
@@ -258,6 +262,20 @@ void ProcessPacket(char *ptr)
 		}
 	}
 	break;
+	case SC_BOSS_SKILL:
+	{
+		sc_packet_boss* myPacket = reinterpret_cast<sc_packet_boss*>(ptr);
+		if (myPacket->kind == 0) {
+			bossEffect[e_index]->update(myPacket->x, myPacket->y);
+			e_index += 1;
+			if (e_index >= 4)
+				e_index = 0;
+		}
+		else if (myPacket->kind == 1) {
+			bossEffect[4]->update(myPacket->x, myPacket->y);
+		}
+	}
+		break;
 	default:
 		printf("Unknown PACKET type [%d]\n", ptr[1]);
 	}
@@ -525,6 +543,9 @@ int Game_Init(void *parms)
 	Load_Texture(L"charSet.png", CHARACTER_TEXTURE, 384, 256);
 	Load_Texture(L"skill1.png", SKILL1_TEXTURE, 640, 896);
 	Load_Texture(L"skill2.png", SKILL2_TEXTURE, 640, 640);
+	Load_Texture(L"boss_skill1.png", BOSS_SKILL1_TEXTURE, 640, 768);
+	Load_Texture(L"boss_skill2.png", BOSS_SKILL2_TEXTURE, 640, 768);
+
 
 	if (!Create_BOB32(&player, 0, 0, TILE_WIDTH, TILE_WIDTH, 12, BOB_ATTR_MULTI_ANIM)) return(0);
 	
@@ -555,6 +576,9 @@ int Game_Init(void *parms)
 	attackEffect = new Effect(EXPLOSION_TEXTURE, 40, 41, 6);
 	skillEffect1 = new SkillEffect(SKILL1_TEXTURE, 128, 128, 5, 7);
 	skillEffect2 = new SkillEffect(SKILL2_TEXTURE, 128	, 128, 5, 5);
+	for (int i = 0; i < 4; ++i)
+		bossEffect[i] = new SkillEffect(BOSS_SKILL1_TEXTURE, 128, 128, 5, 6);
+	bossEffect[4] = new SkillEffect(BOSS_SKILL2_TEXTURE, 128, 128, 5, 6);
 
 	// create skelaton bob
 	for (int i = 0; i < MAX_USER; ++i) {
@@ -705,6 +729,10 @@ int Game_Main(void *parms)
 		skillEffect1->draw();
 	if (skillEffect2->now_render)
 		skillEffect2->draw();
+	for (int i = 0; i < 5; ++i) {
+		if (bossEffect[i]->now_render)
+			bossEffect[i]->draw();
+	}
 
 	// draw some text
 	wchar_t text[300];

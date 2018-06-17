@@ -958,6 +958,8 @@ void Server::NPC_AI(int npc, int player)
 		break;
 	case MONSTER_BOSS:
 		AI->aiScript->eventPlayerMove(player);
+		add_timer(npc, player, 0, BOSS_SKILL, 12);
+		add_timer(npc, player, 1, BOSS_SKILL, 5);
 		break;
 	}
 }
@@ -1195,13 +1197,14 @@ void Server::PlayerSkill2(int id)
 	g_clients[id]->hp += g_clients[id]->level * 2;
 	if (g_clients[id]->hp > g_clients[id]->level * 20)
 		g_clients[id]->hp = g_clients[id]->level * 20;
+	SendStatPacket(id);
 }
 string levelmsg = "Player Level UP!";
 void Server::PlayerLevelUp(Client* player)
 {
 	player->level += 1;
 	player->exp = 0;
-
+	player->hp = player->level * 20;
 	wstring wide_string;
 
 	wide_string.assign(levelmsg.begin(), levelmsg.end());
@@ -1247,12 +1250,92 @@ void Server::NPCAttack(int id, int target)
 	}
 }
 
+int targetPoint_x[4] = { 0,0,3,-3 };
+int targetPoint_y[4] = { 3,-3,0,0 };
+
 void Server::BossSkill(int id, int target)
 {
+	Npc* boss = reinterpret_cast<Npc*>(g_clients[id]);
+	if (boss->is_use == false)
+		return;
+	if (boss->state == STATE_IDLE)
+		return;
+	boss->state = STATE_ATTACK;
+	wchar_t tmp[6] = L"slash";
+	SendChatPacket(target, id, tmp, INFO_ATTACK);
+	sc_packet_boss p;
+	p.type = SC_BOSS_SKILL;
+	p.size = sizeof(p);
+	p.kind = 0;
+	for (int i = 0; i < 4; ++i) {
+		p.x = boss->x + targetPoint_x[i];
+		p.y = boss->y + targetPoint_y[i];
+		SendPacket(target, &p);
+	}
+	int dir_x = g_clients[target]->x - g_clients[id]->x;
+	int dir_y = g_clients[target]->y - g_clients[id]->y;
+	if (dir_x*dir_x + dir_y*dir_y < 18) {
+		g_clients[target]->hp -= 400;
+		string msg;
+		wstring wide_string;
+		if (g_clients[target]->hp < 0) {
+			msg = killMsg2;
+			boss->ai_work = false;
+			boss->state = STATE_IDLE;
+			RespwanPlayer(target);
+		}
+		else {
+			msg = hitMsg2 + to_string(400);
+		}
+
+		wide_string.assign(msg.begin(), msg.end());
+		SendChatPacket(target, target, wide_string.c_str(), INFO_NONE);
+		SendStatPacket(target);
+	}
+	add_timer(id, target, 0, BOSS_SKILL, 12);
 }
 
-void Server::BossSkill2(int id)
+void Server::BossSkill2(int id, int target)
 {
+	Npc* boss = reinterpret_cast<Npc*>(g_clients[id]);
+	if (boss->is_use == false)
+		return;
+	if (boss->state == STATE_IDLE)
+		return;
+	wchar_t tmp[9] = L"darkball";
+	SendChatPacket(target, id, tmp, INFO_ATTACK);
+	//wide_string.assign(msg.begin(), msg.end());
+	//SendChatPacket(target, target, wide_string.c_str(), INFO_NONE);
+	
+
+	sc_packet_boss p;
+	p.type = SC_BOSS_SKILL;
+	p.size = sizeof(p);
+	p.kind = 1;
+	p.x = boss->x;
+	p.y = boss->y;
+	SendPacket(target, &p);
+
+	if (nearArea(id, target) == true) {
+		g_clients[target]->hp -= 100;
+		string msg;
+		wstring wide_string;
+		if (g_clients[target]->hp < 0) {
+			msg = killMsg2;
+			boss->ai_work = false;
+			boss->state = STATE_IDLE;
+			RespwanPlayer(target);
+		}
+		else {
+			msg = hitMsg2 + to_string(100);
+		}
+	
+		wide_string.assign(msg.begin(), msg.end());
+		SendChatPacket(target, target, wide_string.c_str(), INFO_NONE);
+		SendStatPacket(target);
+	}
+
+	add_timer(id, target, 1, BOSS_SKILL, 5);
 }
 
 int CAPI_getX(lua_State * L)

@@ -31,7 +31,6 @@ const char STATE_DEATH = 3;
 
 class Npc : public Object {
 public:
-	bool is_live;
 	mutex vlm;
 	unordered_set<int> viewlist;
 
@@ -90,6 +89,7 @@ static const char EV_MOVE_AI = 5;
 static const char EV_NPC_RESPAWN = 6;
 static const char EV_NPC_ATTACK = 7;
 static const char EV_MOVE_DIR = 8;
+static const char EV_BOSS_SKILL = 9;
 
 struct EXOver {
 	WSAOVERLAPPED wsaover;
