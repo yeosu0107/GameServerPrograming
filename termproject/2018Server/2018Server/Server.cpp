@@ -91,10 +91,12 @@ void Server::addViewList(unordered_set<int>& viewList, const int clientID, const
 			if (!CanSee(clientID, i)) continue;
 			viewList.emplace(i);
 
-			EXOver* exover = new EXOver;
-			exover->event_type = EV_PLAYER_MOVE;
-			exover->event_target = clientID;
-			PostQueuedCompletionStatus(g_iocp, 1, i, &exover->wsaover);
+			if (isNPC(i)) {
+				EXOver* exover = new EXOver;
+				exover->event_type = EV_PLAYER_MOVE;
+				exover->event_target = clientID;
+				PostQueuedCompletionStatus(g_iocp, 1, i, &exover->wsaover);
+			}
 		}
 	}
 	else {
@@ -284,7 +286,8 @@ void Server::DisconnectPlayer(int id) {
 	now->is_use = false;
 	now->player_id = -1;
 }
-
+int randx[5] = { 129, 80,177,129,129 };
+int randy[5] = { 163,191, 191,218,190 };
 void Server::ProcessPacket(int clientID, char* packet) {
 	cs_packet_up* p = reinterpret_cast<cs_packet_up*>(packet);
 	Client* client = reinterpret_cast<Client*>(g_clients[clientID]);
@@ -312,8 +315,11 @@ void Server::ProcessPacket(int clientID, char* packet) {
 			client->x = BOARD_WIDTH - 1;
 		break;
 	case CS_RANDOM:
-		client->x = rand() % BOARD_WIDTH;
-		client->y = rand() % BOARD_HEIGHT;
+	{
+		int index = rand() % 5;
+		client->x = randx[index];
+		client->y = randy[index];
+	}
 		break;
 	case CS_ATTACK:
 		PlayerAttack(clientID);
@@ -333,7 +339,7 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		//cout << "Unknown Protocol from Client [" << clientID << "]\n";
 		return;
 	}
-	if (p->type != CS_ATTACK) {
+	if (p->type < CS_ATTACK) {
 		if (checkCollisionMap(clientID)) {
 			client->x = origin_x;
 			client->y = origin_y;
@@ -459,8 +465,8 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 	int new_key = -1;
 
 	for (int i = 0; i < MAX_USER; ++i) {
-		Client* now = reinterpret_cast<Client*>(g_clients[i]);
-		if (!now->is_use) {
+		//Client* now = reinterpret_cast<Client*>(g_clients[i]);
+		if (!g_clients[i]->is_use) {
 			new_key = i;
 			break;
 		}
@@ -478,7 +484,8 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 	ZeroMemory(&newClient->exover.wsaover, sizeof(WSAOVERLAPPED));
 
 	newClient->is_use = true;
-	newClient->viewlist.clear();
+	unordered_set<int> tmp;
+	newClient->viewlist.swap(tmp);
 
 #ifdef DB
 	DWORD iobyte, ioflag = 0;

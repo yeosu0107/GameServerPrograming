@@ -66,6 +66,7 @@ void WorkerThread()
 			delete exover;
 		}
 		else {
+			delete exover;
 			//cout << "Unknown Event Error in Worker Thread\n";
 		}
 	}

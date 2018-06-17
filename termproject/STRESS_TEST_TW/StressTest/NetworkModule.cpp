@@ -177,7 +177,7 @@ void Worker_Thread()
 		}
 		else {
 			//std::cout << "Unknown GQCS event!\n";
-			while (true);
+			//while (true);
 		}
 	}
 }
@@ -240,12 +240,12 @@ void Adjust_Number_Of_Client()
 	g_clients[num_connections].connect = true;
 	num_connections++;
 
-	/*if (isHotspot == false) {
+	if (isHotspot == false) {
 		cs_packet_up my_packet;
 		my_packet.size = sizeof(my_packet);
 		my_packet.type = CS_RANDOM;
 		SendPacket(num_connections-1, &my_packet);
-	}*/
+	}
 }
 
 
