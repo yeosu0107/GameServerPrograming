@@ -308,6 +308,17 @@ int randy[5] = { 163,191, 191,218,190 };
 void Server::ProcessPacket(int clientID, char* packet) {
 	cs_packet_up* p = reinterpret_cast<cs_packet_up*>(packet);
 	Client* client = reinterpret_cast<Client*>(g_clients[clientID]);
+
+	if (client->stun == true) {
+		DWORD remain = GetTickCount() - client->stunTime;
+		if (remain < 2000) {
+			SendChatPacket(clientID, clientID, L"You're stunned!", INFO_NONE);
+			return;
+		}
+		else
+			client->stun = false;
+	}
+
 	int origin_x = client->x;
 	int origin_y = client->y;
 	switch (p->type) {
@@ -1338,6 +1349,12 @@ void Server::BossSkill2(int id, int target)
 
 	if (nearArea(id, target) == true) {
 		g_clients[target]->hp -= 100;
+
+		Client* player = reinterpret_cast<Client*>(g_clients[target]);
+		player->stun = true;
+		player->stunTime = GetTickCount();
+		SendChatPacket(target, target, L"Crowd Control : Stun", INFO_NONE);
+
 		string msg;
 		wstring wide_string;
 		if (g_clients[target]->hp < 0) {

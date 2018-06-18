@@ -111,6 +111,9 @@ public:
 	int packet_size;
 	int prev_size;
 
+	bool stun;
+	DWORD stunTime;
+
 	DWORD coolTime[3] = { 0, };  //attack, skill1, skill2
 	
 	char prev_packet[MAX_PACKET_SIZE];
