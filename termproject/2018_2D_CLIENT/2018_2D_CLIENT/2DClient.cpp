@@ -235,8 +235,8 @@ void ProcessPacket(char *ptr)
 		break;
 	}
 	case SC_DUPLICATON_PLAYER:
-		cout << "이미 접속한 ID입니다" << endl;
-		cout << "접속을 종료합니다" << endl;
+		std::cout << "이미 접속한 ID입니다" << endl;
+		std::cout << "접속을 종료합니다" << endl;
 		exit(0);
 		break;
 	case SC_PLAYER_STAT:
@@ -619,13 +619,16 @@ int Game_Init(void *parms)
 	char ipAddress[20];
 	int id;
 #ifdef DB
-	cout << "IP 입력 : ";
-	cin >> ipAddress;
-	cout << "ID 입력 : ";
-	cin >> id;
+	printf("set DB Connect : true\n");
+	printf("로그인 정보\n");
+	std::cout << "IP 입력 : ";
+	std::cin >> ipAddress;
+	std::cout << "ID 입력 : ";
+	std::cin >> id;
 #else
 	strcpy(ipAddress, "127.0.0.1");
 	id = 1;
+
 #endif
 
 	WSADATA	wsadata;
@@ -648,11 +651,14 @@ int Game_Init(void *parms)
 	recv_wsabuf.buf = recv_buffer;
 	recv_wsabuf.len = BUF_SIZE;
 
-	cs_packet_up *my_packet = reinterpret_cast<cs_packet_up *>(send_buffer);
+	sc_packet_login *my_packet = reinterpret_cast<sc_packet_login *>(send_buffer);
 	my_packet->size = sizeof(my_packet);
-	send_wsabuf.len = sizeof(my_packet);
-	DWORD iobyte;
 	my_packet->type = id;
+	my_packet->id = id;
+	send_wsabuf.len = sizeof(my_packet);
+
+	DWORD iobyte;
+	
 	WSASend(g_mysocket, &send_wsabuf, 1, &iobyte, 0, NULL, NULL);
 	// return success
 	return(1);

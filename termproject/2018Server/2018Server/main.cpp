@@ -190,7 +190,7 @@ void DBThread() {
 			DBprocess.UpdateUserPos(nowEvent->id, nowEvent->client->x, nowEvent->client->y);
 		}
 		else if (nowEvent->type == SEARCH_ID) {
-			bool ret = DBprocess.SearchUserAndLogin(nowEvent->id, nowEvent->client->x, nowEvent->client->y);
+			bool ret = DBprocess.SearchUserAndLogin(nowEvent->id, nowEvent->client->x, nowEvent->client->y, nowEvent->client->level, nowEvent->client->exp, nowEvent->client->hp);
 			if (ret) {
 				nowEvent->client->player_id = nowEvent->id;
 				Server::getInstance()->AcceptNewClient(nowEvent->client, nowEvent->clientIndex);
@@ -198,6 +198,9 @@ void DBThread() {
 			else {
 				//cout << "Unknown ID" << endl;
 			}	
+		}
+		else if (nowEvent->type == UPDATE_INFO) {
+			DBprocess.UpdateUserInfo(nowEvent->id, nowEvent->client->level, nowEvent->client->exp, nowEvent->client->hp);
 		}
 		db_queue->pop();
 	}

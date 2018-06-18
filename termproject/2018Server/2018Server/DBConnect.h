@@ -11,6 +11,7 @@ void HandleDiagnosticRecord(SQLHANDLE hHandle, SQLSMALLINT hType, RETCODE RetCod
 
 const int SEARCH_ID		= 0;
 const int UPDATE_POS	= 1;
+const int UPDATE_INFO = 2;
 
 class DBConnect {
 private:
@@ -21,10 +22,12 @@ private:
 
 	std::wstring searchUser = L"dbo.search_user_id ";
 	std::wstring updatePos = L"dbo.update_user_pos ";
+	std::wstring updateInfo = L"dbo.update_user_info ";
 public:
 	DBConnect();
 	~DBConnect();
 
-	bool SearchUserAndLogin(int id, int& x, int& y);
+	bool SearchUserAndLogin(int id, int& x, int& y, int& level, int& exp, int& hp);
 	void UpdateUserPos(int id, int x, int y);
+	void UpdateUserInfo(int id, int level, int exp, int hp);
 };

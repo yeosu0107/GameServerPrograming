@@ -46,12 +46,12 @@ DBConnect::~DBConnect()
 	SQLFreeHandle(SQL_HANDLE_ENV, henv);
 }
 
-bool DBConnect::SearchUserAndLogin(int id, int & x, int & y)
+bool DBConnect::SearchUserAndLogin(int id, int & x, int & y, int& level, int& exp, int& hp)
 {
 	SQLRETURN retcode;
 	SQLWCHAR szUser_Name[NAME_LEN];
-	SQLINTEGER nID, nUser_Level, nX, nY;
-	SQLLEN cbName = 0, cbID = 0, cbLevel = 0, cbX = 0, cbY = 0;
+	SQLINTEGER nID, nUser_Level, nX, nY, nExp, nHp;
+	SQLLEN cbName = 0, cbID = 0, cbLevel = 0, cbX = 0, cbY = 0, cbExp = 0, cbHp = 0;
 
 	wstring user_id = to_wstring(id);
 	wstring val = searchUser + user_id;
@@ -63,12 +63,16 @@ bool DBConnect::SearchUserAndLogin(int id, int & x, int & y)
 		SQLBindCol(hstmt, 3, SQL_C_LONG, &nUser_Level, 100, &cbLevel);
 		SQLBindCol(hstmt, 4, SQL_C_LONG, &nX, 100, &cbX);
 		SQLBindCol(hstmt, 5, SQL_C_LONG, &nY, 100, &cbY);
+		SQLBindCol(hstmt, 6, SQL_C_LONG, &nHp, 100, &cbHp);
+		SQLBindCol(hstmt, 7, SQL_C_LONG, &nExp, 100, &cbExp);
 		retcode = SQLFetch(hstmt);
 		SQLCloseCursor(hstmt);
 		if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
 			x = nX;
 			y = nY;
-			
+			level = nUser_Level;
+			hp = nHp;
+			exp = nExp;
 			return true;
 		}
 		else 	return false;
@@ -89,6 +93,21 @@ void DBConnect::UpdateUserPos(int id, int x, int y)
 	wsprintf(tmp, L"%d, %d, %d", id, x, y);
 	wstring tt(tmp);
 	wstring val = updatePos + tt;
+
+	retcode = SQLExecDirect(hstmt, (SQLWCHAR *)(val.c_str()), SQL_NTS);
+	if (retcode != SQL_SUCCESS && retcode != SQL_SUCCESS_WITH_INFO) {
+		HandleDiagnosticRecord(hstmt, SQL_HANDLE_STMT, retcode);
+	}
+}
+
+void DBConnect::UpdateUserInfo(int id, int level, int exp, int hp)
+{
+	SQLRETURN retcode;
+
+	wchar_t tmp[100];
+	wsprintf(tmp, L"%d, %d, %d, %d", id, level, exp, hp);
+	wstring tt(tmp);
+	wstring val = updateInfo + tt;
 
 	retcode = SQLExecDirect(hstmt, (SQLWCHAR *)(val.c_str()), SQL_NTS);
 	if (retcode != SQL_SUCCESS && retcode != SQL_SUCCESS_WITH_INFO) {

@@ -36,6 +36,7 @@
 #define SC_PLAYER_STAT 7
 #define SC_PLAYER_SKILL 8
 #define SC_BOSS_SKILL 9
+#define SC_LOGIN 10
 
 #define ZONE_INTERVAL 30
 #define ZONE_EDGH  23
@@ -44,6 +45,8 @@
 #define INFO_ATTACK 1
 #define INFO_SKILL1 2
 #define INFO_SKILL2 3
+
+#define DB
 
 #pragma pack (push, 1)
 
@@ -106,7 +109,7 @@ struct sc_packet_chat {
 struct sc_packet_login {
 	BYTE size;
 	BYTE type;
-	WCHAR char_str[100];
+	UINT id;
 };
 
 struct sc_packet_stat {

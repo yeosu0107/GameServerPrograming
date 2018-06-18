@@ -272,6 +272,7 @@ void Server::DisconnectPlayer(int id) {
 	//DBEvent newEvent = DBEvent(UPDATE_POS, now->player_id, now, id);
 	//db_queue.push(newEvent);
 	db_queue.emplace(DBEvent(UPDATE_POS, now->player_id, now, id));
+	UpdateUserInfotoDB(id);
 #endif
 	sc_packet_remove_player p;
 	p.id = id;
@@ -517,6 +518,7 @@ void Server::AcceptAndSearchClient(SOCKET & g_socket)
 	DWORD in_packet_size = 0;
 	int saved_packet_size = 0;
 	WSABUF recv_wsabuf;
+
 	char	recv_buffer[1024];
 	char	packet_buffer[1024];
 
@@ -628,7 +630,9 @@ void Server::AcceptNewClient(Client* client, int new_key)
 void Server::SearchClientID(BYTE* id, Client* client, int index)
 {
 #ifdef DB
-	int cID = id[1];
+	sc_packet_login* packet = reinterpret_cast<sc_packet_login*>(id);
+	
+	int cID = packet->type;
 
 	for (int i = 0; i < MAX_USER; ++i) {
 		Client* client = reinterpret_cast<Client*>(g_clients[i]);
@@ -1066,6 +1070,14 @@ void Server::UploadUserDatatoDB()
 	}
 
 	add_timer(-1, -1, -1, DB_UPDATE_TYPE, 10);
+}
+
+void Server::UpdateUserInfotoDB(int id)
+{
+	Client* client = reinterpret_cast<Client*>(g_clients[id]);
+	//if (!client->is_use) return;
+
+	db_queue.emplace(DBEvent(UPDATE_INFO, client->player_id, client, id));
 }
 
 bool Server::nearArea(int id, int target)

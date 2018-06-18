@@ -125,6 +125,7 @@ public:
 	void recv(unsigned long long& key, unsigned long& data_size, EXOver* exover);
 
 	void UploadUserDatatoDB();
+	void UpdateUserInfotoDB(int id);
 
 	bool nearArea(int id, int target);
 	void PlayerAttack(int id);
