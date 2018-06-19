@@ -56,6 +56,8 @@ public:
 	}
 };
 
+
+
 class Server
 {
 private:
@@ -138,6 +140,10 @@ public:
 	void BossSkill2(int id, int target);
 
 	bool CheckPlayerLevel(Client* player);
+
+	void CheckQuest(Client* player, int id);
+	void SendQuestPacket(Client* player, int id);
+	void SendQuestClear(Client* player, int id);
 };
 
 int CAPI_getX(lua_State* L);

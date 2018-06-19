@@ -6,6 +6,15 @@
 
 Server* Server::g_server = nullptr;
 
+Quest quest1(0, 1);
+Quest quest2(1, 1);
+Quest quest3(2, 1);
+Quest quest4(3, 1);
+Quest quest5(4, 10);
+Quest quest6(5, 20);
+
+Quest quest[6] = { quest1, quest2, quest3, quest4, quest5, quest6 };
+
 bool Server::isNPC(int index)
 {
 	if (index >= NPC_START)
@@ -303,8 +312,8 @@ void Server::DisconnectPlayer(int id) {
 	now->is_use = false;
 	now->player_id = -1;
 }
-int randx[5] = { 129, 80,177,129,129 };
-int randy[5] = { 163,191, 191,218,190 };
+int randx[15] = { 129, 80,177,129,129, 14, 14, 57, 189, 160, 32, 99, 85, 33, 87 };
+int randy[15] = { 163,191, 191,218,190, 76, 222, 232, 231, 134, 139, 112, 150, 191, 89 };
 void Server::ProcessPacket(int clientID, char* packet) {
 	cs_packet_up* p = reinterpret_cast<cs_packet_up*>(packet);
 	Client* client = reinterpret_cast<Client*>(g_clients[clientID]);
@@ -344,12 +353,13 @@ void Server::ProcessPacket(int clientID, char* packet) {
 		break;
 	case CS_RANDOM:
 	{
-		int index = rand() % 5;
+		int index = rand() % 15;
 		client->x = randx[index];
 		client->y = randy[index];
 	}
 		break;
 	case CS_ATTACK:
+		CheckQuest(client, clientID);
 		PlayerAttack(clientID);
 		//printf("recv attack message : player %d\n", clientID);
 		return;
@@ -570,7 +580,7 @@ void Server::AcceptNewClient(Client* client, int new_key)
 	Client* newClient = reinterpret_cast<Client*>(client);
 	CreateIoCompletionPort(reinterpret_cast<HANDLE>(newClient->s),
 		g_iocp, new_key, 0);
-
+	printf("Accept %d\n", new_key);
 	//newClient->viewlist.clear();
 	//newClient->is_use = true;
 
@@ -644,7 +654,10 @@ void Server::SearchClientID(BYTE* id, Client* client, int index)
 	sc_packet_login* packet = reinterpret_cast<sc_packet_login*>(id);
 	
 	int cID = packet->type;
-
+	if (cID == DUMMY_CLIENT) {
+		AcceptNewClient(client, index);
+		return;
+	}
 	for (int i = 0; i < MAX_USER; ++i) {
 		Client* client = reinterpret_cast<Client*>(g_clients[i]);
 		if (!client->is_use) continue;
@@ -1138,6 +1151,9 @@ void Server::PlayerAttack(int id)
 				add_timer(npc, -1, -1, NPC_RESPAWN_TYPE, 10);
 				SendStatPacket(id);
 				SendRemoveObject(id, npc);
+				if (player->checkQuest(true)) {
+					SendQuestClear(player, id);
+				}
 			}
 			else {
 				msg = hitMsg + to_string(damage);
@@ -1394,6 +1410,49 @@ bool Server::CheckPlayerLevel(Client* player)
 			return false;
 	}
 	return true;
+}
+WCHAR quest_hunt1[31] = L"hunt monster type 0 | remain 1";
+WCHAR quest_hunt2[31] = L"hunt monster type 1 | remain 1";
+WCHAR quest_hunt3[31] = L"hunt monster type 2 | remain 1";
+WCHAR quest_hunt4[29] = L"hunt monster boss | remain 1";
+WCHAR quest_level1[16] = L"goal level | 10";
+WCHAR quest_level2[16] = L"goal level | 20";
+//WCHAR quest_clear[7] = L"Clear!";
+
+WCHAR* questStr[6] = { quest_hunt1, quest_hunt2, quest_hunt3, quest_hunt4, quest_level1, quest_level2 };
+
+int quest_x[6] = { 102, 107, 112, 117, 112, 117 };
+int quest_y[6] = { 185, 185, 185, 185, 198, 198 };
+
+void Server::CheckQuest(Client * player, int id)
+{
+	for (int i = 0; i < 6; ++i) {
+		if (player->x == quest_x[i] && player->y == quest_y[i]) {
+			if (player->setQuest(&quest[i], i) == false) {
+				SendChatPacket(id, id, L"Quest already exist", INFO_NONE);
+				return;
+			}
+			SendQuestPacket(player, id);
+			if (player->checkQuest(false))
+				SendQuestClear(player, id);
+			return;
+		}
+	}
+}
+
+void Server::SendQuestPacket(Client * player, int id)
+{
+	if (player->myQuest == nullptr)
+		return;
+
+	SendChatPacket(id, id, questStr[player->myQuest->type], INFO_QUEST);
+}
+
+void Server::SendQuestClear(Client * player, int id)
+{
+	SendChatPacket(id, id, L"Quest Clear! | exp + 10", INFO_CLEAR);
+	player->exp += 10;
+	SendStatPacket(id);
 }
 
 int CAPI_getX(lua_State * L)

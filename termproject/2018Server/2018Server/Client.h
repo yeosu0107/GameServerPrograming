@@ -7,6 +7,17 @@
 
 using namespace std;
 
+struct Quest
+{
+	int type;
+	int num;
+
+	Quest(int t, int n) {
+		type = t;
+		num = n;
+	}
+};
+
 class Object {
 public:
 	bool is_use = false;
@@ -118,6 +129,9 @@ public:
 	
 	char prev_packet[MAX_PACKET_SIZE];
 
+	Quest* myQuest = nullptr;
+	int count = 0;
+
 	Client() {
 		exover.event_type = EV_RECV;
 		exover.wsabuf.buf = exover.io_buf;
@@ -138,5 +152,8 @@ public:
 		aiScript = nullptr;
 		ai_work = false;
 	}
+
+	bool setQuest(Quest* quest, int index);
+	bool checkQuest(bool kill);
 };
 

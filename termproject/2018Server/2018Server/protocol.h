@@ -7,10 +7,10 @@
 
 #define VIEW_RADIUS   11
 
-#define MAX_USER 1000		//ID (0~9)
+#define MAX_USER 3000		//ID (0~9)
 
-#define NPC_START  1000		//NPC ID
-#define NUM_OF_NPC  1000 + 1597		//유저 + NPC의 수
+#define NPC_START  3000		//NPC ID
+#define NUM_OF_NPC  3000 + 1597		//유저 + NPC의 수
 
 #define MY_SERVER_PORT  4000
 
@@ -45,6 +45,10 @@
 #define INFO_ATTACK 1
 #define INFO_SKILL1 2
 #define INFO_SKILL2 3
+#define INFO_QUEST 4
+#define INFO_CLEAR 5
+
+#define DUMMY_CLIENT 255
 
 #define DB
 

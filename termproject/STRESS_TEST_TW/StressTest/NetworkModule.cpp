@@ -240,6 +240,12 @@ void Adjust_Number_Of_Client()
 	g_clients[num_connections].connect = true;
 	num_connections++;
 
+	sc_packet_login p;
+	p.size = sizeof(p);
+	p.type = DUMMY_CLIENT;
+	p.id = DUMMY_CLIENT;
+	SendPacket(num_connections - 1, &p);
+
 	if (isHotspot == false) {
 		cs_packet_up my_packet;
 		my_packet.size = sizeof(my_packet);

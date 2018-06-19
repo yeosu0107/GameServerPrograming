@@ -58,6 +58,7 @@ HINSTANCE main_instance = NULL; // save the instance
 char buffer[80];                // used to print text
 
 wchar_t g_message[300];
+wchar_t g_quest[300];
 unsigned char color_r = 255;
 unsigned char color_g = 255;
 unsigned char color_b = 255;
@@ -214,8 +215,18 @@ void ProcessPacket(char *ptr)
 		if (other_id == g_myid) {
 			//wcsncpy_s(player.message, my_packet->message, 256);
 			//player.message_time = GetTickCount();
-			wcsncpy_s(g_message, my_packet->message, 256);
-			logMsg->insert(GetTickCount(), g_message);
+			if (my_packet->info == INFO_QUEST) {
+				wcsncpy_s(g_quest, my_packet->message, 256);
+			}
+			else if (my_packet->info == INFO_CLEAR) {
+				wcsncpy_s(g_quest, L"", 256);
+				wcsncpy_s(g_message, my_packet->message, 256);
+				logMsg->insert(GetTickCount(), g_message);
+			}
+			else {
+				wcsncpy_s(g_message, my_packet->message, 256);
+				logMsg->insert(GetTickCount(), g_message);
+			}
 			//color_r = 0;
 			//color_g = 255;
 			//color_b = 0;
@@ -538,7 +549,7 @@ int Game_Init(void *parms)
 
 	Load_Texture(L"CHESS2.PNG", UNIT_TEXTURE, 192, TILE_WIDTH);
 	Load_Texture(L"monsterSet.png", MONSTER_TEXTURE, 384, 256);
-	Load_Texture(L"myMap.png", MAP_BACKTEXTURE, 9600, 9600);
+	Load_Texture(L"myMap2.png", MAP_BACKTEXTURE, 9600, 9600);
 	Load_Texture(L"explosion.png", EXPLOSION_TEXTURE, 240, 41);
 	Load_Texture(L"charSet.png", CHARACTER_TEXTURE, 384, 256);
 	Load_Texture(L"skill1.png", SKILL1_TEXTURE, 640, 896);
@@ -744,6 +755,8 @@ int Game_Main(void *parms)
 	wchar_t text[300];
 	wsprintf(text, L"Level : %2d HP : %3d exp : %3d / %3d  POS (%3d, %3d)", g_mylevel, g_myhp, g_myexp, g_maxexp, player.x, player.y);
 	Draw_Text_D3D(text, 10, screen_height - 64, D3DCOLOR_ARGB(255, 255, 255, 255));
+
+	Draw_Text_D3D(g_quest, 10, 10, D3DCOLOR_ARGB(255, 255, 255, 255));
 	//Draw_Text_D3D(g_message, 10, screen_height - 128, D3DCOLOR_ARGB(255, color_r, color_g, color_b));
 	logMsg->draw();
 	g_pSprite->End();
